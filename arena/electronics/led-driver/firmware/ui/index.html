@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WPFL Arena LEDs</title>
+<meta name="theme-color" content="#1a1a2e">
+<!--
+  WPFL Arena LED Driver — web UI (embedded into firmware by scripts/embed_web_ui.py)
+  Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev)
+  Non-Commercial Source-Available License. Derived from the Rotato controller UI.
+  Protocol: docs/protocols/arena-led-websocket.md
+-->
+<style>
+:root{--bg:#1a1a2e;--card:#16213e;--card2:#0f3460;--fg:#eee;--mut:#9aa3b5;--acc:#e94560;--ok:#4caf50;--line:#2a3558}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',Arial,sans-serif;padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom));max-width:760px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+header h1{font-size:1.25rem;color:var(--acc);letter-spacing:1px;flex:1;white-space:nowrap}
+#dot{width:14px;height:14px;border-radius:50%;background:#777;flex:none}
+#dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+#label{font-size:.75rem;background:var(--card2);padding:4px 10px;border-radius:12px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav{display:flex;gap:6px;margin-bottom:10px}
+nav button{flex:1}
+nav button.sel{background:var(--acc);border-color:var(--acc)}
+.card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px}
+.card h2{font-size:.8rem;text-transform:uppercase;color:var(--mut);letter-spacing:1px;margin-bottom:8px;font-weight:600}
+button,select,input{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+button{cursor:pointer;touch-action:manipulation;user-select:none}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.4}
+input[type=number]{width:72px}
+input[type=color]{padding:2px;width:44px;height:36px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--acc)}
+label{font-size:.85rem;color:var(--mut)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.row>label{min-width:110px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.big{font-size:1.15rem;font-weight:700;padding:20px 6px;border:none;letter-spacing:1px}
+.big.active{outline:3px solid #fff;outline-offset:-3px}
+.mid{font-weight:600;padding:12px 4px}
+.mid.active{outline:2px solid #fff;outline-offset:-2px}
+.wide{grid-column:1/-1}
+.b-red{background:#c62828}.b-yel{background:#f9a825;color:#222}.b-grn{background:#2e7d32}
+.b-cd{background:linear-gradient(90deg,#c62828,#ef6c00,#2e7d32)}
+.b-blue{background:#1565c0}
+.danger{border-color:var(--acc);color:var(--acc);background:transparent}
+.preview{position:relative}
+#arena{width:100%;height:auto;display:block}
+#arena .px{stroke:#000;stroke-width:1}
+#arena .sec{cursor:pointer}
+#arena text{fill:var(--mut);font-size:9px}
+#cdbig{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:4.5rem;font-weight:800;text-shadow:0 0 18px #000;pointer-events:none}
+#rows .r{display:flex;gap:2px;align-items:center;margin-top:4px;font-size:.7rem;color:var(--mut)}
+#rows .r span{width:70px}
+#rows i{display:inline-block;width:10px;height:10px;border:1px solid #000}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+td{padding:4px 2px;border-bottom:1px solid var(--line)}
+td input[type=text]{width:100%;min-width:70px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:.75rem;padding:4px 8px;border-radius:12px}
+.chip.on{background:var(--acc);border-color:var(--acc)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.85rem}
+.kv span:nth-child(odd){color:var(--mut)}
+.muted{color:var(--mut);font-size:.8rem}
+.hide{display:none!important}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:.9rem;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}
+#toast.show{opacity:1}
+#toast.err{background:#b71c1cdd}
+.robot{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.robot b{width:52px}
+progress{width:100%}
+</style>
+</head>
+<body>
+<header>
+  <div id="dot" title="WebSocket"></div>
+  <h1>WPFL ARENA</h1>
+  <div id="label">—</div>
+</header>
+<nav>
+  <button data-tab="control" class="sel">Control</button>
+  <button data-tab="setup">Setup</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+<!-- ═════════════════════════ CONTROL ═════════════════════════ -->
+<section id="tab-control">
+  <div class="card preview">
+    <svg id="arena" viewBox="0 0 340 240"></svg>
+    <div id="cdbig"></div>
+    <div id="rows"></div>
+  </div>
+
+  <div class="card">
+    <div class="grid3">
+      <button class="big b-red"  data-q="stop">STOP</button>
+      <button class="big b-yel"  data-q="pause">PAUSE</button>
+      <button class="big b-grn"  data-q="fight">FIGHT</button>
+      <button class="big b-cd wide" data-q="countdown" id="cdBtn">COUNTDOWN</button>
+    </div>
+    <div class="grid4" style="margin-top:8px">
+      <button class="mid" data-q="off">OFF</button>
+      <button class="mid" data-q="white">WHITE</button>
+      <button class="mid" data-q="rainbow">RAINBOW</button>
+      <button class="mid" data-q="ko" title="Rules E.4 — incapacitated robot">10 s COUNT</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Robots</h2>
+    <div class="robot"><b style="color:#ef5350">RED</b>
+      <button class="mid" data-q="redFault">Fault</button><button class="mid b-red" data-q="redWins">Wins</button></div>
+    <div class="robot"><b style="color:#42a5f5">BLUE</b>
+      <button class="mid" data-q="blueFault">Fault</button><button class="mid b-blue" data-q="blueWins">Wins</button></div>
+    <p class="muted">Fault = side blinks yellow for 3 s, then returns. Uses groups “red” / “blue”.</p>
+  </div>
+
+  <div class="card">
+    <h2>Brightness <span id="briVal"></span></h2>
+    <input type="range" id="bri" min="0" max="255" style="width:100%">
+  </div>
+
+  <div class="card">
+    <h2>Custom</h2>
+    <div class="row"><label>Target</label><select id="cTarget"></select></div>
+    <div class="row"><label>Effect</label><select id="cFx">
+      <option>solid</option><option>blink</option><option>breathe</option><option>rainbow</option>
+      <option>chase</option><option>sparkle</option><option>progress</option><option>off</option></select></div>
+    <div class="row"><label>Colors</label><input type="color" id="cC1" value="#ff0000"><input type="color" id="cC2" value="#000000"></div>
+    <div class="row"><label>Period (ms)</label><input type="number" id="cPer" value="1000" min="20" max="60000"></div>
+    <div class="row"><label>Duration (ms)</label><input type="number" id="cDur" value="0" min="0"><span class="muted">0 = forever</span></div>
+    <div class="row"><label>Progress %</label><input type="number" id="cVal" value="50" min="0" max="100"></div>
+    <div class="row"><label>Overlay</label><input type="checkbox" id="cOv"><span class="muted">stack on top instead of replacing</span></div>
+    <div class="row"><button id="cApply">Apply</button><button id="cCancel">Cancel effects on target</button></div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ SETUP ═════════════════════════ -->
+<section id="tab-setup" class="hide">
+  <div class="card">
+    <h2>Sections (wiring order)</h2>
+    <p class="muted" style="margin-bottom:8px">1 pixel = one 10 cm WS2811 segment. Order = data-chain order on each output.
+      Ceiling runs clockwise seen from above; edges run top → bottom. Tick “rev” if a run was installed backwards.</p>
+    <table><thead><tr><td></td><td>Name</td><td>Pixels</td><td>Out</td><td>Rev</td><td></td></tr></thead>
+      <tbody id="secBody"></tbody></table>
+    <div class="row" style="margin-top:8px"><button id="secAdd">+ Section</button>
+      <span class="muted" id="secTotals"></span></div>
+    <div class="row"><input type="checkbox" id="liveApply" checked><label for="liveApply" style="min-width:0">Apply count changes instantly</label></div>
+  </div>
+  <div class="card">
+    <h2>Groups</h2>
+    <div id="grpList"></div>
+    <div class="row" style="margin-top:8px"><button id="grpAdd">+ Group</button></div>
+  </div>
+  <div class="card">
+    <div class="row"><button id="layoutSave">Save layout</button><button id="layoutReset" class="danger">Reset to default</button></div>
+    <div class="row"><button id="identOn">Identify sections</button><button id="identOff">Stop identify</button></div>
+    <p class="muted">Identify: each section gets its own color; its first pixel is white (shows direction).</p>
+  </div>
+  <div class="card">
+    <h2>Pixel probe</h2>
+    <div class="row"><select id="pSec"></select>
+      <button id="pDec">−</button><input type="number" id="pIdx" value="0" min="0"><button id="pInc">+</button>
+      <button id="pGo">Light</button></div>
+    <p class="muted">Lights one pixel white (everything else off) — count pixels after cutting.</p>
+  </div>
+</section>
+
+<!-- ═════════════════════════ SETTINGS ═════════════════════════ -->
+<section id="tab-settings" class="hide">
+  <div class="card">
+    <h2>LED strip</h2>
+    <div class="row"><label>Color order</label><select id="sOrder">
+      <option>GRB</option><option>RGB</option><option>RBG</option><option>GBR</option><option>BRG</option><option>BGR</option></select></div>
+    <div class="row"><label>Gamma</label><input type="checkbox" id="sGamma"></div>
+    <div class="row"><label>Max watts</label><input type="number" id="sMaxW" min="0" max="2000"><span class="muted">0 = no limit</span></div>
+    <div class="row"><label>W per pixel</label><input type="number" id="sWpp" step="0.1" min="0.01" max="20"><span class="muted">full white</span></div>
+    <div class="row"><label>Boot scene</label><select id="sBoot"></select></div>
+    <div class="row"><label>Buzzer</label><input type="checkbox" id="sBuzz"></div>
+  </div>
+  <div class="card">
+    <h2>Countdown</h2>
+    <div class="row"><label>Seconds</label><input type="number" id="sCdSec" step="0.5" min="0" max="600"></div>
+    <div class="row"><label>Warn at (s)</label><input type="number" id="sCdWarn" step="0.5" min="0" max="600"></div>
+    <div class="row"><label>GO flash (ms)</label><input type="number" id="sCdGo" min="0" max="30000"></div>
+    <div class="row"><label>Colors</label>
+      <input type="color" id="sCdHigh" title="High"><input type="color" id="sCdWarnC" title="Warn">
+      <input type="color" id="sCdGoC" title="Go"><input type="color" id="sCdThen" title="Then"></div>
+    <div class="row"><label>After GO</label><input type="checkbox" id="sCdThenOn"><span class="muted">hold “then” color (else: back to what was showing)</span></div>
+    <div class="row"><button id="sSave">Save LED + countdown settings</button></div>
+  </div>
+  <div class="card">
+    <h2>Network</h2>
+    <div class="kv" style="margin-bottom:10px"><span>Mode</span><span id="nMode">—</span><span>IP</span><span id="nIp">—</span>
+      <span>Network</span><span id="nSsid">—</span><span>Signal</span><span id="nRssi">—</span></div>
+    <div class="row"><label>WiFi SSID</label><input type="text" id="wSsid" list="wList"><datalist id="wList"></datalist><button id="wScan">Scan</button></div>
+    <div class="row"><label>Password</label><input type="password" id="wPass" placeholder="(unchanged)"></div>
+    <div class="row"><label>Static IP</label><input type="checkbox" id="wStatic"></div>
+    <div id="wStaticBox" class="hide">
+      <div class="row"><label>IP</label><input type="text" id="wIp" placeholder="192.168.1.50"></div>
+      <div class="row"><label>Gateway</label><input type="text" id="wGw"></div>
+      <div class="row"><label>Mask</label><input type="text" id="wMask" value="255.255.255.0"></div>
+      <div class="row"><label>DNS</label><input type="text" id="wDns" placeholder="(gateway)"></div>
+    </div>
+    <div class="row"><button id="wSave">Save &amp; reboot</button><button id="wForget" class="danger">Forget network</button></div>
+  </div>
+  <div class="card">
+    <h2>Device</h2>
+    <div class="row"><label>Hostname</label><input type="text" id="dHost"><span class="muted">.local</span></div>
+    <div class="row"><label>Hotspot SSID</label><input type="text" id="dApSsid"></div>
+    <div class="row"><label>Hotspot pass</label><input type="password" id="dApPass" placeholder="(unchanged)"></div>
+    <div class="row"><button id="dSave">Save &amp; reboot</button></div>
+    <div class="row"><label>Control token</label><input type="password" id="dToken" placeholder="(empty = open)"><button id="dTokSet">Set</button></div>
+    <p class="muted">With a token, only clients that send it (this browser remembers it) can change the lights.</p>
+  </div>
+  <div class="card">
+    <h2>System</h2>
+    <div class="kv" id="sys"></div>
+    <div class="row" style="margin-top:10px"><input type="file" id="otaFile" accept=".bin"><button id="otaGo">Update firmware</button></div>
+    <progress id="otaProg" value="0" max="100" class="hide"></progress>
+    <div class="row"><button id="reboot">Reboot</button><button id="factory" class="danger">Factory reset</button></div>
+  </div>
+</section>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = v => String(v).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+let ws, cfg = null, state = {}, status = {}, pixEls = [], secModel = [], grpModel = [], uid = 1;
+let token = ''; try { token = localStorage.getItem('wpfl_token') || ''; } catch (e) {}
+
+// ── Toast ────────────────────────────────────────────────────────────────
+let toastT;
+function toast(msg, err) {
+  const t = $('toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = '', 2500);
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => {
+    $('dot').classList.add('on');
+    if (token) send({type: 'auth', token});
+    subscribe();
+  };
+  ws.onclose = () => { $('dot').classList.remove('on'); setTimeout(connect, 1500); };
+  ws.onmessage = ev => {
+    if (typeof ev.data !== 'string') return onFrame(new Uint8Array(ev.data));
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    ({config: onConfig, state: onState, status: onStatus, error: onError, ack: onAck,
+      auth: m => toast(m.ok ? 'Token accepted' : 'Wrong token', !m.ok), wifi_scan: onScan})[m.type]?.(m);
+  };
+}
+function send(o) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(o)); return true; } toast('Not connected', true); return false; }
+function subscribe() {
+  const vis = !document.hidden && !$('tab-control').classList.contains('hide');
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({type: 'subscribe', frames: vis, fps: 15}));
+}
+document.addEventListener('visibilitychange', subscribe);
+
+function onError(m) {
+  if (m.error === 'auth required') {
+    const t = prompt('This driver is locked. Control token:');
+    if (t) { token = t; try { localStorage.setItem('wpfl_token', t); } catch (e) {} send({type: 'auth', token: t}); }
+    return;
+  }
+  toast(`${m.cmd || 'error'}: ${m.error}`, true);
+}
+function onAck(m) { if (m.reboot) toast('Saved — rebooting…'); }
+
+// ── Tabs ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x === b));
+  ['control', 'setup', 'settings'].forEach(t => $('tab-' + t).classList.toggle('hide', t !== b.dataset.tab));
+  subscribe();
+});
+
+// ── Arena preview ────────────────────────────────────────────────────────
+// Oblique box: ceiling (top face) and floor (dashed). Known section names are
+// placed on the box; anything else is drawn as a row underneath.
+const C = {nw: [95, 22], ne: [305, 22], se: [255, 92], sw: [35, 92]};
+const DROP = 125;
+const GEO = {
+  ceil_n: ['nw', 'ne', 0], ceil_e: ['ne', 'se', 0], ceil_s: ['se', 'sw', 0], ceil_w: ['sw', 'nw', 0],
+  edge_ne: ['ne', 'ne', 1], edge_se: ['se', 'se', 1], edge_sw: ['sw', 'sw', 1], edge_nw: ['nw', 'nw', 1],
+};
+function drawArena() {
+  const svg = $('arena'), ns = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const e = document.createElementNS(ns, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  svg.innerHTML = ''; pixEls = []; $('rows').innerHTML = '';
+  const f = k => [C[k][0], C[k][1] + DROP];
+  svg.appendChild(el('polygon', {points: ['nw', 'ne', 'se', 'sw'].map(k => f(k).join(',')).join(' '),
+    fill: '#0d1528', stroke: '#2a3558', 'stroke-dasharray': '4 3'}));
+  svg.appendChild(el('text', {x: 150, y: 190, 'text-anchor': 'middle'})).textContent = 'floor';
+  ['nw', 'ne', 'se', 'sw'].forEach(k => svg.appendChild(el('text', {x: C[k][0], y: C[k][1] - 6, 'text-anchor': 'middle'})).textContent = k.toUpperCase());
+  if (!cfg) return;
+  cfg.layout.sections.forEach(s => {
+    const g = GEO[s.name];
+    if (!g) {   // unknown name → row
+      const r = document.createElement('div'); r.className = 'r';
+      r.innerHTML = `<span>${esc(s.name)}</span>`;
+      for (let i = 0; i < s.count; i++) { const p = document.createElement('i'); r.appendChild(p); pixEls[s.start + i] = {row: p}; }
+      r.onclick = () => pickTarget(s.name);
+      $('rows').appendChild(r); return;
+    }
+    const a = C[g[0]], b = g[2] ? f(g[1]) : C[g[1]];
+    const grp = svg.appendChild(el('g', {class: 'sec'}));
+    grp.onclick = () => pickTarget(s.name);
+    grp.appendChild(el('line', {x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#2a3558', 'stroke-width': 9, 'stroke-linecap': 'round'}));
+    const n = s.count, len = Math.hypot(b[0] - a[0], b[1] - a[1]), sz = Math.max(3, Math.min(9, len / n - 1.5));
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+      const p = grp.appendChild(el('rect', {class: 'px', x: x - sz / 2, y: y - sz / 2, width: sz, height: sz, rx: 1.5, fill: '#111'}));
+      pixEls[s.start + i] = {svg: p};
+    }
+  });
+}
+function onFrame(d) {
+  if (d[0] !== 2) return;
+  const n = (d[1] << 8) | d[2];
+  for (let i = 0; i < n && i < pixEls.length; i++) {
+    const o = pixEls[i]; if (!o) continue;
+    const c = `rgb(${d[3 + i * 3]},${d[4 + i * 3]},${d[5 + i * 3]})`;
+    if (o.svg) o.svg.setAttribute('fill', c); else o.row.style.background = c;
+  }
+}
+function pickTarget(name) { $('cTarget').value = name; toast('Custom target: ' + name); }
+
+// ── Quick actions ────────────────────────────────────────────────────────
+const hasGroup = n => cfg && cfg.layout.groups.some(g => g.name === n);
+const Q = {
+  stop:  () => [{type: 'solid', color: 'red', label: 'stop'}],
+  pause: () => [{type: 'solid', color: 'yellow', label: 'pause'}],
+  fight: () => [{type: 'solid', color: 'green', label: 'fight'}],
+  countdown: () => [{type: 'countdown', label: 'countdown'}],
+  off:   () => [{type: 'off', label: 'off'}],
+  white: () => [{type: 'solid', color: 'white', label: 'white'}],
+  rainbow: () => [{type: 'effect', fx: 'rainbow', period: 6000, label: 'rainbow'}],
+  ko:    () => [{type: 'countdown', seconds: 10, warnAt: 3, high: 'yellow', warn: 'red', go: 'red', then: 'red', label: '10s count'}],
+  redFault:  () => fault('red'),
+  blueFault: () => fault('blue'),
+  redWins:   () => wins('red', 'red'),
+  blueWins:  () => wins('blue', 'blue'),
+};
+function fault(side) {
+  if (!hasGroup(side)) { toast(`No group "${side}" — add it in Setup`, true); return []; }
+  return [{type: 'effect', fx: 'blink', target: side, color: 'yellow', color2: 'off', period: 300, duration: 3000, overlay: true}];
+}
+function wins(side, color) {
+  return [{type: 'solid', color, label: side + ' wins'},
+          {type: 'effect', fx: 'sparkle', color: 'white', color2: color, period: 90, duration: 6000, overlay: true}];
+}
+document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => Q[b.dataset.q]().forEach(send));
+
+let briT = 0;
+$('bri').oninput = e => {
+  $('briVal').textContent = Math.round(e.target.value / 2.55) + '%';
+  const now = Date.now(); if (now - briT > 80) { briT = now; send({type: 'brightness', value: +e.target.value}); }
+};
+$('bri').onchange = e => send({type: 'brightness', value: +e.target.value});
+
+$('cApply').onclick = () => {
+  const fx = $('cFx').value, target = $('cTarget').value;
+  if (fx === 'solid') return send({type: 'solid', target, color: $('cC1').value});
+  if (fx === 'off') return send({type: 'off', target});
+  send({type: 'effect', fx, target, color: $('cC1').value, color2: $('cC2').value, period: +$('cPer').value,
+        duration: +$('cDur').value, value: +$('cVal').value / 100, overlay: $('cOv').checked});
+};
+$('cCancel').onclick = () => send({type: 'cancel', target: $('cTarget').value});
+
+// ── State / status ───────────────────────────────────────────────────────
+function onState(m) {
+  state = m;
+  $('label').textContent = m.label || '—';
+  document.querySelectorAll('[data-q]').forEach(b => {
+    const l = {stop: 'stop', pause: 'pause', fight: 'fight', countdown: 'countdown', off: 'off', white: 'white',
+               rainbow: 'rainbow', ko: '10s count', redWins: 'red wins', blueWins: 'blue wins'}[b.dataset.q];
+    b.classList.toggle('active', !!l && l === m.label);
+  });
+  if (document.activeElement !== $('bri')) { $('bri').value = m.brightness; $('briVal').textContent = Math.round(m.brightness / 2.55) + '%'; }
+  const cd = m.countdown, big = $('cdbig');
+  if (cd) {
+    big.style.display = 'flex';
+    big.textContent = cd.phase === 'go' ? 'GO!' : cd.secondsLeft;
+    big.style.color = {high: '#ff5252', warn: '#ff9100', go: '#69f0ae'}[cd.phase];
+  } else big.style.display = 'none';
+}
+function onStatus(m) {
+  status = m;
+  const w = m.wifi || {}, h = m.heap || {};
+  $('nMode').textContent = w.mode; $('nIp').textContent = `${w.ip} (${w.host}.local)`;
+  $('nSsid').textContent = w.ssid || '(none)'; $('nRssi').textContent = w.rssi ? w.rssi + ' dBm' : '—';
+  const kb = b => (b / 1024).toFixed(1) + ' KB';
+  const rows = [['Firmware', m.fw + ' (proto ' + m.proto + ')'], ['Uptime', fmtUp(m.uptime)],
+    ['Heap free', `${kb(h.free)} of ${kb(h.total)}`], ['Heap min ever', kb(h.min)], ['Largest block', kb(h.maxBlock)],
+    ['Render', m.fps + ' fps'], ['LED power', `${m.watts} W${m.limited ? ' (LIMITED)' : ''}`],
+    ['Supply', m.supplyV == null ? 'USB / not wired' : m.supplyV + ' V'], ['Clients', m.clients], ['Pixels', m.pixels],
+    ['Token', m.auth ? 'required' : 'off']];
+  $('sys').innerHTML = rows.map(r => `<span>${r[0]}</span><span>${esc(r[1])}</span>`).join('');
+}
+const fmtUp = s => `${Math.floor(s / 3600)}h ${Math.floor(s / 60) % 60}m ${s % 60}s`;
+
+// ── Config → UI ──────────────────────────────────────────────────────────
+function onConfig(m) {
+  cfg = m;
+  drawArena();
+  // targets
+  const opts = ['all', ...m.layout.groups.map(g => g.name), ...m.layout.sections.map(s => s.name)];
+  const keep = $('cTarget').value;
+  $('cTarget').innerHTML = opts.map(o => `<option>${esc(o)}</option>`).join('');
+  if (opts.includes(keep)) $('cTarget').value = keep;
+  $('pSec').innerHTML = m.layout.sections.map(s => `<option>${esc(s.name)}</option>`).join('');
+  $('cdBtn').textContent = `COUNTDOWN  ${m.settings.countdown.seconds}s`;
+  // setup model
+  secModel = m.layout.sections.map(s => ({id: uid++, name: s.name, count: s.count, out: s.out, rev: s.rev}));
+  grpModel = m.layout.groups.map(g => ({name: g.name, members: new Set(g.sections.map(n => secModel.find(s => s.name === n)?.id))}));
+  renderSetup();
+  // settings
+  const s = m.settings, cd = s.countdown;
+  $('sOrder').value = s.colorOrder; $('sGamma').checked = s.gamma; $('sMaxW').value = s.maxWatts;
+  $('sWpp').value = s.wattsPerPixel; $('sBuzz').checked = s.buzzer;
+  $('sBoot').innerHTML = m.bootScenes.map(b => `<option>${esc(b)}</option>`).join(''); $('sBoot').value = s.bootScene;
+  $('sCdSec').value = cd.seconds; $('sCdWarn').value = cd.warnAt; $('sCdGo').value = cd.goMs;
+  $('sCdHigh').value = cd.high; $('sCdWarnC').value = cd.warn; $('sCdGoC').value = cd.go;
+  $('sCdThenOn').checked = cd.then !== 'none'; if (cd.then !== 'none') $('sCdThen').value = cd.then;
+  $('wSsid').value = m.wifi.ssid; const st = m.wifi.static;
+  $('wStatic').checked = st.enabled; $('wStaticBox').classList.toggle('hide', !st.enabled);
+  $('wIp').value = st.ip; $('wGw').value = st.gateway; $('wMask').value = st.mask; $('wDns').value = st.dns;
+  $('dHost').value = m.device.hostname; $('dApSsid').value = m.device.apSsid;
+}
+
+// ── Setup: sections & groups ─────────────────────────────────────────────
+function renderSetup() {
+  const tb = $('secBody'); tb.innerHTML = '';
+  secModel.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><button data-a="up">▲</button><button data-a="dn">▼</button></td>
+      <td><input type="text" value="${esc(s.name)}" maxlength="15"></td>
+      <td style="white-space:nowrap"><button data-a="minus">−</button><input type="number" value="${s.count}" min="1" style="width:56px"><button data-a="plus">+</button></td>
+      <td><select><option value="0">A</option><option value="1">B</option></select></td>
+      <td><input type="checkbox" ${s.rev ? 'checked' : ''}></td><td><button data-a="del" class="danger">✕</button></td>`;
+    const [name, cnt] = tr.querySelectorAll('input[type=text],input[type=number]');
+    const sel = tr.querySelector('select'), rev = tr.querySelector('input[type=checkbox]');
+    sel.value = s.out;
+    name.onchange = () => { s.name = name.value.trim().toLowerCase(); renderGroups(); };
+    cnt.onchange = () => { s.count = Math.max(1, +cnt.value || 1); totals(); live(); };
+    sel.onchange = () => { s.out = +sel.value; live(); };
+    rev.onchange = () => { s.rev = rev.checked; live(); };
+    tr.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const a = b.dataset.a;
+      if (a === 'plus' || a === 'minus') { s.count = Math.max(1, s.count + (a === 'plus' ? 1 : -1)); cnt.value = s.count; totals(); live(); return; }
+      if (a === 'up' && i > 0) [secModel[i - 1], secModel[i]] = [secModel[i], secModel[i - 1]];
+      if (a === 'dn' && i < secModel.length - 1) [secModel[i + 1], secModel[i]] = [secModel[i], secModel[i + 1]];
+      if (a === 'del') { secModel.splice(i, 1); grpModel.forEach(g => g.members.delete(s.id)); }
+      renderSetup(); live();
+    });
+    tb.appendChild(tr);
+  });
+  totals(); renderGroups();
+}
+function totals() {
+  const n = secModel.reduce((a, s) => a + s.count, 0), wpp = cfg ? cfg.settings.wattsPerPixel : 1.2;
+  $('secTotals').textContent = `${n} px · ${(n * 0.1).toFixed(1)} m · max ≈ ${Math.round(n * wpp)} W @ full white`;
+}
+function renderGroups() {
+  const box = $('grpList'); box.innerHTML = '';
+  grpModel.forEach((g, gi) => {
+    const d = document.createElement('div'); d.className = 'row';
+    d.innerHTML = `<input type="text" value="${esc(g.name)}" maxlength="15" style="width:90px"><div class="chips"></div><button class="danger">✕</button>`;
+    const chips = d.querySelector('.chips');
+    secModel.forEach(s => {
+      const c = document.createElement('button'); c.className = 'chip' + (g.members.has(s.id) ? ' on' : ''); c.textContent = s.name;
+      c.onclick = () => { g.members.has(s.id) ? g.members.delete(s.id) : g.members.add(s.id); c.classList.toggle('on'); };
+      chips.appendChild(c);
+    });
+    d.querySelector('input').onchange = e => g.name = e.target.value.trim().toLowerCase();
+    d.querySelector('.danger').onclick = () => { grpModel.splice(gi, 1); renderGroups(); };
+    box.appendChild(d);
+  });
+}
+function layoutPayload() {
+  return {type: 'set_layout',
+    sections: secModel.map(s => ({name: s.name, count: s.count, out: s.out, rev: s.rev})),
+    groups: grpModel.map(g => ({name: g.name, sections: secModel.filter(s => g.members.has(s.id)).map(s => s.name)}))};
+}
+let liveT;
+function live() { if ($('liveApply').checked) { clearTimeout(liveT); liveT = setTimeout(() => send(layoutPayload()), 250); } }
+$('secAdd').onclick = () => { secModel.push({id: uid++, name: 'sec' + (secModel.length + 1), count: 6, out: 0, rev: false}); renderSetup(); };
+$('grpAdd').onclick = () => { grpModel.push({name: 'group' + (grpModel.length + 1), members: new Set()}); renderGroups(); };
+$('layoutSave').onclick = () => { if (send(layoutPayload())) toast('Layout saved'); };
+$('layoutReset').onclick = () => confirm('Reset to the default 8-section layout?') && send({type: 'reset_layout'});
+$('identOn').onclick = () => send({type: 'identify', on: true});
+$('identOff').onclick = () => send({type: 'identify', on: false});
+const probe = () => send({type: 'pixel', target: $('pSec').value, index: +$('pIdx').value, color: 'white', clear: true, label: 'probe'});
+$('pGo').onclick = probe;
+$('pInc').onclick = () => { $('pIdx').value = +$('pIdx').value + 1; probe(); };
+$('pDec').onclick = () => { $('pIdx').value = Math.max(0, +$('pIdx').value - 1); probe(); };
+
+// ── Settings ─────────────────────────────────────────────────────────────
+$('sSave').onclick = () => send({type: 'set_settings', settings: {
+  colorOrder: $('sOrder').value, gamma: $('sGamma').checked, maxWatts: +$('sMaxW').value,
+  wattsPerPixel: +$('sWpp').value, bootScene: $('sBoot').value, buzzer: $('sBuzz').checked,
+  countdown: {seconds: +$('sCdSec').value, warnAt: +$('sCdWarn').value, goMs: +$('sCdGo').value,
+    high: $('sCdHigh').value, warn: $('sCdWarnC').value, go: $('sCdGoC').value,
+    then: $('sCdThenOn').checked ? $('sCdThen').value : 'none'}}}) && toast('Settings saved');
+$('wStatic').onchange = e => $('wStaticBox').classList.toggle('hide', !e.target.checked);
+$('wScan').onclick = () => { send({type: 'wifi_scan'}); toast('Scanning…'); };
+function onScan(m) {
+  $('wList').innerHTML = m.networks.map(n => `<option value="${esc(n.ssid)}">${n.rssi} dBm</option>`).join('');
+  toast(`${m.networks.length} networks found`);
+}
+$('wSave').onclick = () => {
+  const o = {type: 'set_wifi', ssid: $('wSsid').value.trim(),
+    static: {enabled: $('wStatic').checked, ip: $('wIp').value, gateway: $('wGw').value, mask: $('wMask').value, dns: $('wDns').value}};
+  if ($('wPass').value) o.pass = $('wPass').value;
+  if (o.ssid && confirm(`Join "${o.ssid}" and reboot?`)) send(o);
+};
+$('wForget').onclick = () => confirm('Forget the WiFi network and go back to hotspot mode?') && send({type: 'forget_wifi'});
+$('dSave').onclick = () => confirm('Save device settings and reboot?') &&
+  send({type: 'set_device', hostname: $('dHost').value.trim(), apSsid: $('dApSsid').value.trim(), apPass: $('dApPass').value});
+$('dTokSet').onclick = () => {
+  const t = $('dToken').value;
+  if (send({type: 'set_token', token: t})) {
+    token = t; try { localStorage.setItem('wpfl_token', t); } catch (e) {}
+    toast(t ? 'Token set' : 'Token cleared');
+  }
+};
+$('reboot').onclick = () => confirm('Reboot the LED driver?') && send({type: 'reboot'});
+$('factory').onclick = () => confirm('Erase ALL settings (WiFi, layout, LED)?') && send({type: 'factory_reset'});
+$('otaGo').onclick = () => {
+  const f = $('otaFile').files[0];
+  if (!f || !f.name.endsWith('.bin') || f.size < 4096) return toast('Pick a firmware .bin', true);
+  const fd = new FormData(); fd.append('firmware', f, f.name);
+  const x = new XMLHttpRequest(), p = $('otaProg');
+  p.classList.remove('hide');
+  x.upload.onprogress = e => p.value = e.loaded / e.total * 100;
+  x.onload = () => { let r = {}; try { r = JSON.parse(x.responseText); } catch (e) {}
+    toast(r.ok ? 'Updated — rebooting…' : 'Update failed: ' + (r.error || x.status), !r.ok); };
+  x.onerror = () => toast('Upload failed', true);
+  x.open('POST', '/update'); if (token) x.setRequestHeader('X-Token', token); x.send(fd);
+};
+
+drawArena();
+connect();
+</script>
+</body>
+</html>

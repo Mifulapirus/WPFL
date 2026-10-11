@@ -1,0 +1,92 @@
+WPFL (Weaponized Plastic Fighting League) — Non-Commercial Source-Available License
+Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev)
+
+All rights reserved except as explicitly granted below.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GRANT OF LICENSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation, design files, and AI context
+files (collectively, the "Software"), to use, study, copy, modify, and
+distribute the Software for NON-COMMERCIAL purposes only, subject to ALL of
+the conditions in this license.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONDITIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ATTRIBUTION (REQUIRED — NO EXCEPTIONS)
+
+   Any project, product, publication, video, article, presentation, workshop,
+   or derivative work that uses, includes, references, or is derived from any
+   portion of the Software — including but not limited to:
+
+     • Source code (modified or unmodified)
+     • Compiled firmware or binaries
+     • Design documents, schematics, or configuration files
+     • AI context/prompt files (e.g., AI_CONTEXT.md), whether pasted into an
+       AI assistant or used in any automated pipeline to generate new code,
+       firmware, or robot controllers
+     • Any AI-generated output that was produced using the above materials
+
+   MUST prominently display the following attribution in all of the following
+   applicable locations: the project's README or documentation, any published
+   or distributed source repository, any user interface that credits
+   contributors, and any public-facing description of the project:
+
+       Author:  Angel Hernandez
+       Website: www.thehomelab.dev
+
+   This requirement applies whether the derivative work is "inspired by",
+   "based on", "generated from", or directly copied from this Software.
+
+2. NON-COMMERCIAL USE ONLY
+
+   The Software and any derivative works may only be used for non-commercial
+   purposes. You may NOT use the Software (or any part of it) for:
+
+     • Selling or licensing products, kits, or services that incorporate the
+       Software or derivative works
+     • Running paid workshops, classes, or events where the Software or a
+       derivative is a primary deliverable or teaching material
+     • Crowdfunding campaigns (Kickstarter, Indiegogo, etc.) that include the
+       Software or a derivative as a reward or deliverable
+     • Offering consulting, contracting, or freelance services that deliver
+       the Software or a derivative to a paying client
+     • Any other activity that generates revenue or economic benefit to a
+       third party, directly or indirectly
+
+   SOLE COMMERCIAL RIGHTS: All commercial rights are exclusively reserved by
+   Angel Hernandez (www.thehomelab.dev). Any commercial use requires explicit
+   written permission from Angel Hernandez.
+
+3. SHARE-ALIKE
+
+   Any derivative work that is publicly distributed must be released under
+   the same license terms as this license, with this copyright notice intact.
+
+4. NO SUBLICENSING OR TRANSFER
+
+   You may not sublicense, sell, transfer, or assign any rights granted by
+   this license to any third party.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DISCLAIMER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+ANGEL HERNANDEZ BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF,
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTACT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For commercial licensing inquiries:
+  Angel Hernandez | www.thehomelab.dev | angel@thehomelab.dev
