@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WPFL — Live</title>
+<meta name="theme-color" content="#0e1014">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/css/app.css">
+<!-- WPFL Match Tracker — public viewer. Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) -->
+</head>
+<body>
+<header class="bar"><div>
+  <div class="brand"><i class="dot" id="dot" title="Live connection"></i><b>WPFL</b><span id="evName"></span></div>
+  <nav>
+    <button data-tab="live" class="sel">Live</button>
+    <button data-tab="rounds">Rounds</button>
+    <button data-tab="standings">Standings</button>
+    <button data-tab="robots">Robots</button>
+  </nav>
+</div></header>
+
+<main>
+<div class="card mb hide" id="pastBanner"></div>
+<section id="tab-live">
+  <div class="tab" id="liveView">
+    <div class="card fightcard clickable" id="liveCard" title="Tap a robot for its battlecard"></div>
+    <div class="card hide" id="idleCard">
+      <h2>Between fights</h2>
+      <p id="idleText" class="lead">Waiting for the next fight…</p>
+    </div>
+    <div class="duo">
+      <div class="card"><h2>Up next</h2><div id="upNext"></div></div>
+      <div class="card"><h2>Latest results</h2><div id="recent"></div></div>
+      <div class="card"><div class="head"><h2>Ranking</h2><span class="muted">W–L · Buchholz</span></div><div id="ranking"></div></div>
+    </div>
+  </div>
+
+  <!-- While no event is published: what's coming up, and past events -->
+  <div class="tab hide" id="upcomingView">
+    <div class="card hero" id="nextHero"></div>
+    <div class="card hide" id="nextRobotsCard">
+      <div class="head"><h2>Participating robots</h2><span class="muted" id="nextRobotsCount"></span></div>
+      <div class="bcs" id="nextCards"></div>
+    </div>
+    <div class="card hide" id="laterCard"><h2>Also coming up</h2><div id="upList"></div></div>
+    <div class="card hide" id="upPastCard"><h2>Past events</h2><div id="upPast"></div></div>
+  </div>
+
+  <!-- Replaces the live view once every round is done and there is one clear winner -->
+  <div class="tab hide" id="finalView">
+    <div class="card champ">
+      <div class="trophy">🏆</div>
+      <h2 id="champTitle">Champion</h2>
+      <div class="champ-name" id="champName"></div>
+      <div class="muted" id="champMeta"></div>
+    </div>
+    <div class="podium" id="podium"></div>
+    <div class="card scroll">
+      <div class="head"><h2>Final ranking</h2><span class="muted" id="finalSub"></span></div>
+      <table>
+        <thead><tr><th class="n">#</th><th>Robot</th><th class="hide-s">Builder</th><th class="n">W</th><th class="n">L</th><th class="n" title="Sum of opponents' wins">Buchholz</th><th class="n hide-s">KOs</th></tr></thead>
+        <tbody id="finalTable"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="tab-rounds" class="tab hide">
+  <div class="card">
+    <div class="follow mb" id="follow"></div>
+    <div class="bk" id="rounds"></div>
+  </div>
+</section>
+
+<section id="tab-standings" class="tab hide">
+  <div class="card scroll">
+    <table>
+      <thead><tr><th class="n">#</th><th>Robot</th><th class="n">W</th><th class="n">L</th><th class="n" title="Sum of opponents' wins">Buchholz</th><th class="n">KOs</th></tr></thead>
+      <tbody id="table"></tbody>
+    </table>
+    <p class="muted mt">Ranked by wins, then Buchholz (strength of opponents), then fewest losses. A bye counts as a win.</p>
+  </div>
+  <div class="card hide" id="pastCard"><h2>Past events</h2><div id="pastList"></div></div>
+</section>
+
+<section id="tab-robots" class="tab hide">
+  <div class="head"><input type="text" id="bcFilter" placeholder="Find a robot…" aria-label="Find a robot"><span class="muted" id="bcCount"></span></div>
+  <div class="bcs" id="cards"></div>
+</section>
+</main>
+<div id="toast"></div>
+<script type="module" src="/js/viewer.js"></script>
+</body>
+</html>

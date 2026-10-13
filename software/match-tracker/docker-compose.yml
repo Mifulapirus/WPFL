@@ -1,0 +1,13 @@
+# docker compose up -d   (reads REFEREE_PASSWORD / LED_KEY from .env next to this file)
+services:
+  wpfl-match-tracker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      DATA_DIR: /data
+    ports:
+      - "127.0.0.1:3110:3110"   # nginx on the host proxies to this
+    volumes:
+      - ./data:/data

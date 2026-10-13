@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WPFL — Referee</title>
+<meta name="theme-color" content="#0e1014">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/ref.css">
+<!-- WPFL Match Tracker — referee console. Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) -->
+</head>
+<body>
+<header class="bar"><div>
+  <div class="brand"><i class="dot" id="dot" title="Server connection"></i><b>WPFL</b><span>Referee</span></div>
+  <span class="chip bad opt hide" id="ledChip" title="Arena LED driver link">LEDs offline</span>
+  <select id="evPick" class="hide" title="The event the Bracket, Robots and Event tabs work on"></select>
+  <span class="chip opt" id="evChip"></span>
+  <nav id="nav" class="hide">
+    <button data-tab="fight" class="sel">Fight</button>
+    <button data-tab="bracket">Bracket</button>
+    <button data-tab="robots">Robots</button>
+    <button data-tab="event">Event</button>
+  </nav>
+</div></header>
+
+<main>
+<!-- ═════════════ LOGIN ═════════════ -->
+<section id="login" class="hide">
+  <div class="card login">
+    <h2>Referee sign-in</h2>
+    <form id="loginForm">
+      <input type="password" id="pw" placeholder="Password" autocomplete="current-password" required>
+      <button class="pri" type="submit">Sign in</button>
+      <p class="muted" id="loginMsg">The public live view is at <a href="/">/</a>.</p>
+    </form>
+  </div>
+</section>
+
+<!-- ═════════════ FIGHT ═════════════ -->
+<section id="tab-fight" class="tab hide">
+  <div class="col a-live">
+    <div class="card fightcard" id="liveCard"></div>
+    <div class="card hide" id="idleCard">
+      <div class="head"><h2 id="arenaTitle">Arena</h2><button class="pri" id="loadNext">Load next fight</button></div>
+      <p class="lead" id="idleText">No fight loaded.</p>
+    </div>
+  </div>
+  <div class="col a-queue">
+    <div class="card">
+      <div class="head"><h2>Fight queue</h2><span class="muted" id="restRule"></span></div>
+      <div id="queue"></div>
+    </div>
+  </div>
+
+  <div class="card a-pad">
+    <div class="pad">
+      <button class="c6 tall b-grn" id="bStart">START</button>
+      <button class="c3 tall b-yel" id="bPause">PAUSE</button>
+      <button class="c3 tall b-red" id="bStop" title="Emergency stop: red lights, clock paused">STOP</button>
+      <span class="lbl">Faults &amp; counts</span>
+      <button class="c6 f-red" data-fault="red">RED FAULT</button>
+      <button class="c6 f-blue" data-fault="blue">BLUE FAULT</button>
+      <button class="c3 f-red" data-count="red" data-kind="ko" title="Incapacitated — 10 s count">RED 10 s</button>
+      <button class="c3 f-red" data-count="red" data-kind="pin" title="Red is pinning — 10 s hold limit">RED PIN</button>
+      <button class="c3 f-blue" data-count="blue" data-kind="ko" title="Incapacitated — 10 s count">BLUE 10 s</button>
+      <button class="c3 f-blue" data-count="blue" data-kind="pin" title="Blue is pinning — 10 s hold limit">BLUE PIN</button>
+      <button class="c12" id="bCancelCount">CANCEL COUNT</button>
+      <span class="lbl">Declare winner</span>
+      <button class="c4 b-red" data-win="red" data-method="ko">RED · KO</button>
+      <button class="c4 b-red" data-win="red" data-method="judges">RED · JUDGES</button>
+      <button class="c4 b-red" data-win="red" data-method="forfeit">RED · FORFEIT</button>
+      <button class="c4 b-blue" data-win="blue" data-method="ko">BLUE · KO</button>
+      <button class="c4 b-blue" data-win="blue" data-method="judges">BLUE · JUDGES</button>
+      <button class="c4 b-blue" data-win="blue" data-method="forfeit">BLUE · FORFEIT</button>
+      <span class="lbl">Arena</span>
+      <button class="c6" id="bUnload">UNLOAD</button>
+      <button class="c6" id="bNext">LOAD NEXT</button>
+    </div>
+    <p class="muted mt">FORFEIT = the named robot wins because the other forfeited. Counts light that robot's half of the arena.</p>
+  </div>
+</section>
+
+<!-- ═════════════ BRACKET ═════════════ -->
+<section id="tab-bracket" class="tab hide">
+  <div class="card">
+    <div class="head"><h2 id="swissTitle">Swiss rounds</h2>
+      <div class="btns"><div class="seg" id="bkMode"><button data-m="view" class="sel">View</button><button data-m="edit">Edit</button></div>
+        <button class="danger" id="delRound">Delete last round</button><button class="pri" id="genRound">Generate round</button></div></div>
+    <p class="muted">Each round pairs robots with the same record without repeating opponents; an odd robot gets a bye (= a win).
+      <b>Edit</b>: re-pair, swap corners (⇄), reorder (▲▼), record or reset results, add fights.</p>
+  </div>
+  <div class="card" id="bkView">
+    <div class="follow mb" id="follow"></div>
+    <div class="bk" id="bkGfx"></div>
+  </div>
+  <div id="bracket" class="tab hide"></div>
+  <div class="card hide" id="addCard">
+    <h2>Add a fight</h2>
+    <div class="btns"><select id="addRound"></select><select id="addRed"></select><span class="muted">vs</span><select id="addBlue"></select>
+      <label class="btns"><input type="checkbox" id="addRanked" checked>Counts for standings</label>
+      <button id="addFight">Add</button></div>
+  </div>
+</section>
+
+<!-- ═════════════ ROBOTS ═════════════ -->
+<section id="tab-robots" class="tab hide">
+  <div class="card">
+    <div class="head"><h2>Import registrations</h2><span class="muted" id="importInfo"></span></div>
+    <div class="btns mb"><label for="copyFrom">Copy robots from</label><select id="copyFrom"></select>
+      <button id="copyBtn">Copy</button><span class="muted">bios, photos and notes; names already here are skipped</span></div>
+    <div class="imp">
+      <input type="text" id="sheetUrl" placeholder="Google Sheets link (shared: anyone with the link can view)">
+      <button class="pri" id="importSheet">Import from sheet</button>
+      <input type="file" id="importFile" accept=".csv,text/csv" aria-label="CSV file">
+      <button id="importCsv">Import CSV file</button>
+    </div>
+    <p class="muted mt">Adds new robots and updates existing ones by robot name — never deletes, keeps your notes. Imported:
+      robot name, builder/team, the robot description (public battlecard) and the rules checklist (referees only).
+      <b>Email, phone and timestamps are never imported.</b></p>
+    <div class="muted mt" id="importResult"></div>
+  </div>
+  <div class="card">
+    <div class="head"><h2>Add robot</h2><button class="pri" id="addRobot">Add</button></div>
+    <div class="fields">
+      <div><label for="nName">Robot name</label><input type="text" id="nName" maxlength="40"></div>
+      <div><label for="nBuilder">Builder</label><input type="text" id="nBuilder" maxlength="60"></div>
+      <div><label for="nTeam">Team</label><input type="text" id="nTeam" maxlength="60"></div>
+      <div><label for="nNotes">Notes (referees only)</label><input type="text" id="nNotes" maxlength="200"></div>
+      <div class="span-all"><label for="nBio">Battlecard text (public)</label><input type="text" id="nBio" maxlength="220" placeholder="max 220 characters"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="head"><h2 id="robotsTitle">Robots</h2>
+      <div class="seg" id="rbMode"><button data-m="edit" class="sel">Edit</button><button data-m="cards">Card preview</button></div></div>
+    <div id="robotList"></div>
+    <div class="hide" id="cardView">
+      <p class="muted mb">Exactly what viewers see on the public <b>Robots</b> tab — also while the event is a draft. Click a card to turn it over; ✎ edits that robot.</p>
+      <div class="bcs" id="cardPreview"></div>
+    </div>
+    <input type="file" id="photoFile" class="hide" accept="image/png,image/jpeg,image/webp">
+    <p class="muted mt" id="rbHelp">Edits save when you leave a field. The second line is the public battlecard text. Turn <b>Active</b> off to drop a robot from future rounds, <b>Card</b> off to hide its battlecard from viewers;
+      robots that already fought cannot be deleted.</p>
+  </div>
+</section>
+
+<!-- ═════════════ EVENT ═════════════ -->
+<section id="tab-event" class="tab hide">
+  <div class="card">
+    <div class="head"><h2>Events</h2><button class="pri" id="evNew">+ New event</button></div>
+    <div id="evList"></div>
+    <p class="muted mt"><b>Draft</b> → <b>Publish</b> (public as upcoming: countdown, info, robot cards) → <b>Start event</b>
+      (live: fights, bracket, lights) → <b>End event</b> (saved to Past events). Robots and brackets can be set up at any stage;
+      the event picker at the top chooses which event the Bracket and Robots tabs edit.</p>
+  </div>
+  <div class="card" id="evDetails">
+    <div class="head"><h2 id="evTitle">Event details</h2><div class="btns" id="evActions"></div></div>
+    <p class="muted mb" id="evHelp"></p>
+    <div class="fields evf" id="eventFields">
+      <div class="wide"><label for="eName">Name</label><input type="text" id="eName" maxlength="80"></div>
+      <div class="mid"><label for="eDate">Date</label><input type="date" id="eDate"></div>
+      <div><label for="eTime">Start time</label><input type="time" id="eTime"></div>
+      <div class="mid"><label for="eLoc">Location</label><input type="text" id="eLoc" maxlength="120" placeholder="Asmbly, Austin TX"></div>
+      <div class="wide"><label for="eLink">Link (registration / info)</label><input type="text" id="eLink" maxlength="300" placeholder="https://…"></div>
+      <div class="wide"><label for="eNote">Note</label><input type="text" id="eNote" maxlength="300" placeholder="1 kg plastic robots · free for spectators"></div>
+      <div><label for="eRounds">Swiss rounds</label><input type="number" id="eRounds" min="1" max="20"></div>
+      <div><label for="eMatch">Match (s)</label><input type="number" id="eMatch" min="10" max="900" title="Match length in seconds"></div>
+      <div><label for="eCd">Countdown (s)</label><input type="number" id="eCd" min="0" max="10" title="Start countdown in seconds"></div>
+      <div><label for="eCount">Count (s)</label><input type="number" id="eCount" min="3" max="30" title="Incapacitation / pin count in seconds"></div>
+      <div><label for="eRest">Min rest (min)</label><input type="number" id="eRest" min="0" max="60" title="The fight queue warns when a robot rested less than this"></div>
+      <div class="wide"><label for="eImg">Banner / art</label><div class="btns"><span id="eImgThumb"></span>
+        <input type="file" id="eImg" accept="image/png,image/jpeg,image/webp"><button class="sm danger hide" id="eImgDel">Remove banner</button></div></div>
+    </div>
+    <div class="btns mt"><button class="pri" id="saveEvent">Save details</button>
+      <span class="muted">The start time drives the public countdown (your browser's timezone).</span></div>
+  </div>
+  <div class="card">
+    <div class="head"><h2>Arena LED driver</h2><span class="chip" id="ledState">—</span></div>
+    <div class="kv mb" id="ledInfo"></div>
+    <div class="btns">
+      <button data-scene="idle">Rainbow</button><button data-scene="ready">Yellow</button><button data-scene="fight">Green</button>
+      <button data-scene="stop">Red</button><button data-scene="white">White</button><button data-scene="off">Off</button></div>
+    <p class="muted mt">The driver connects out to this server, so it works from any network with internet. On the driver:
+      Settings → Match server → URL <b id="ledUrl"></b>, key = the server's <code>LED_KEY</code>.</p>
+  </div>
+  <div class="card">
+    <div class="head"><h2>Past events</h2><span class="muted">Restore brings one back as a draft</span></div>
+    <div id="pastList"></div>
+  </div>
+  <div class="card">
+    <h2>Data</h2>
+    <div class="btns"><button id="export">Download backup of this event (JSON)</button><button class="danger" id="logout">Sign out</button></div>
+  </div>
+</section>
+</main>
+<div id="toast"></div>
+<script type="module" src="/js/ref.js"></script>
+</body>
+</html>

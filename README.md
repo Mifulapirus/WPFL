@@ -23,7 +23,7 @@ WPFL/
 │       │   └── rotato-pcb/        Reference for the Rotato ESP32-C3 board we reuse
 │       └── led-driver/            ★ Arena LED driver: firmware, web UI, wiring, test client
 ├── software/
-│   └── match-tracker/             Live match tracking website + referee console (runs on Capek)
+│   └── match-tracker/             Live match tracking website + referee console (wpfl-asmbly.thehomelab.dev)
 ├── docs/
 │   ├── rules.md                   Event rules summary (official: wpfl.thehomelab.dev)
 │   └── protocols/                 Interfaces between components
@@ -45,18 +45,18 @@ WPFL/
 
 | Component | Status | Where |
 |---|---|---|
-| Arena LED driver | 🟢 firmware v0.1 — ready for bench test | [`arena/electronics/led-driver`](arena/electronics/led-driver/) |
+| Arena LED driver | 🟢 firmware v0.2 — bench testing | [`arena/electronics/led-driver`](arena/electronics/led-driver/) |
 | Rotato PCB reference | 📄 documented | [`arena/electronics/boards/rotato-pcb`](arena/electronics/boards/rotato-pcb/) |
 | Arena structure | ⚪ to document | [`arena/structure`](arena/structure/) |
-| Match tracker (Capek) | ⚪ planned | [`software/match-tracker`](software/match-tracker/) |
+| Match tracker (Capek-Web) | 🟡 v0.1 first pass — Swiss, referee console, LED link | [`software/match-tracker`](software/match-tracker/) |
 
 ## How the pieces talk
 
 ```
- Referee tablet ─┐                                   ┌─► LED driver (ESP32-C3) ─► 72 px COB strip
- Spectator view ─┼─► Match tracker on Capek ──WS───► │      ▲  web UI + WebSocket API
- Brackets/scores ┘     (live site, referee faults)   │      └── START / STOP buttons (offline fallback)
-                                                     └─► (future arena devices)
+ Referee tablet ─┐                                     LED driver (ESP32-C3) ─► 72 px COB strip
+ Spectator view ─┼─► Match tracker on Capek-Web ◄─wss── │  dials out from the venue WiFi (no shared LAN needed)
+ Brackets/scores ┘     (live site, referee console)      ├─ own web UI + WebSocket API on the LAN
+                                                         └─ START / STOP buttons (offline fallback)
 ```
 
 ---

@@ -1,0 +1,7 @@
+# Event data and secrets stay on the server
+data/
+data-*/
+.env
+.env.*
+!.env.example
+node_modules/

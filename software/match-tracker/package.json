@@ -1,0 +1,20 @@
+{
+  "name": "wpfl-match-tracker",
+  "version": "0.1.0",
+  "description": "WPFL match tracker: Swiss brackets, live fight control, public viewer and arena LED link",
+  "author": "Angel Hernandez (www.thehomelab.dev)",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --env-file=.env server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
