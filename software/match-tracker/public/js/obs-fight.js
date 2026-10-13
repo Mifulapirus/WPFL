@@ -1,6 +1,7 @@
 // Broadcast fight bar (/obs/fight): a lower-third scorebug for the fight in the arena —
 // both robots with photo, record and faults, the match clock, start countdown,
-// KO/pin counts and the result. Between fights it shows the next fight ("Up next").
+// KO/pin counts and the result. Between fights it shows the next fight ("Up next"),
+// and when nothing is queued (between rounds, after the last fight) the latest result.
 // Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) — Non-Commercial Source-Available License.
 //
 // URL options: pos=bottom (default) | top · idle=next (default) | hide (no bar between fights)
@@ -38,16 +39,22 @@ function demoFight(d, now) {
   return live;
 }
 
-// What the bar shows now: the loaded fight, else the next one in the queue, else nothing.
+// What the bar shows now: the loaded fight, else the next one in the queue, else the
+// latest result (between rounds, after the last fight), else nothing.
 function current(d, at, now) {
   if (demo) return { live: demoFight(d, now), at: now };
   if (d.live) return { live: d.live, at };
-  const q = opt.get('idle') !== 'hide' && d.queue[0];
-  const f = q && d.fights.find(x => x.id === q.id);
-  if (!f || !f.blue) return null;
-  const side = id => ({ id, name: d.robots.find(x => x.id === id)?.name ?? '?', faults: 0 });
-  return { next: true, live: { round: f.round, seq: f.seq, ranked: f.ranked, phase: 'next', red: side(f.red),
-                               blue: side(f.blue), matchMs: d.event.matchSeconds * 1000, elapsedMs: 0 }, at };
+  if (opt.get('idle') === 'hide') return null;
+  const side = (f, s) => ({ id: f[s], name: d.robots.find(x => x.id === f[s])?.name ?? '?', faults: f.faults?.[s] || 0 });
+  const base = f => ({ round: f.round, seq: f.seq, ranked: f.ranked, red: side(f, 'red'), blue: side(f, 'blue'),
+                       matchMs: d.event.matchSeconds * 1000 });
+  const next = d.queue.map(q => d.fights.find(x => x.id === q.id)).find(f => f && f.blue);
+  if (next) return { live: { ...base(next), phase: 'next', elapsedMs: 0, red: { ...side(next, 'red'), faults: 0 },
+                             blue: { ...side(next, 'blue'), faults: 0 } }, at };
+  const last = d.fights.filter(f => f.status === 'done' && f.blue && f.winner)
+    .sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0) || b.round - a.round || b.seq - a.seq)[0];
+  if (!last) return null;
+  return { live: { ...base(last), phase: 'last', elapsedMs: last.durationMs || 0, winner: last.winner, method: last.method }, at };
 }
 
 function draw() {
@@ -78,6 +85,7 @@ function draw() {
   else if (ph === 'paused') { ph = live.stopped ? 'stopped' : 'paused'; label = live.stopped ? 'Stopped' : 'Paused'; }
   else if (ph === 'time') label = 'Time — judges';
   else if (ph === 'done') label = `${live.winner} wins · ${METHOD[live.method] || ''}`;
+  else if (ph === 'last') label = `Result · ${METHOD[live.method] || ''}`;   // the WINNER badge says who
   bar.dataset.phase = ph;
   bar.classList.toggle('low', ph === 'running' && left <= 30000);
   $('clock').textContent = ph === 'next' ? 'VS' : clock;
@@ -97,8 +105,9 @@ function draw() {
     const faults = who.faults ? `<span class="flt">${who.faults} FAULT${who.faults > 1 ? 'S' : ''}</span>` : '';
     const meta = rec + (by ? `<span class="by">${esc(by)}</span>` : '') + faults;
     if (e.meta.innerHTML !== meta) e.meta.innerHTML = meta;
-    e.root.classList.toggle('win', ph === 'done' && live.winner === s);
-    e.root.classList.toggle('lose', ph === 'done' && live.winner !== s);
+    const over = ph === 'done' || ph === 'last';
+    e.root.classList.toggle('win', over && live.winner === s);
+    e.root.classList.toggle('lose', over && live.winner !== s);
 
     const cnt = live.count, on = !!cnt && cnt.side === s;
     e.count.classList.toggle('on', on);

@@ -86,11 +86,11 @@ buttons, the options, and live previews.
 
 | Page | Background | What it shows |
 |---|---|---|
-| `/obs/fight` | transparent | Lower-third scorebug: red and blue robot (photo or monogram, name, team, record, rank, faults), match clock, 3-2-1 countdown, KO / pin count over the robot's picture, winner. Between fights: the next fight ("Up next"); hidden when nothing is queued |
+| `/obs/fight` | transparent | Lower-third scorebug: red and blue robot (photo or monogram, name, team, record, rank, faults), match clock, 3-2-1 countdown, KO / pin count over the robot's picture, winner. Between fights: the next fight ("Up next"); with nothing queued (between rounds, after the last fight) the latest result |
 | `/obs/bracket` | dark | Swiss rounds as columns: every pairing, winner ✓ and method, LIVE / NEXT marks, placeholders for rounds not paired yet |
 | `/obs/ranking` | dark | Standings: position (gold/silver/bronze), robot, team, W, L, KO, Buchholz; LIVE / NEXT / OUT / CHAMPION tags; rows slide to their new place after a result |
 
-Options (query string): `bg=transparent|dark|green` (any page; green = chroma key) · fight: `pos=top`, `idle=hide`,
+Options (query string): `bg=transparent|dark|green` (any page; green = chroma key) · fight: `pos=top`, `idle=hide` (no bar unless a fight is loaded),
 `demo=1` (loops a fake fight through every state, for building scenes before event day) · bracket: `rounds=N` (most
 columns, default 5) · ranking: `top=N`, `cols=1|2`.
 

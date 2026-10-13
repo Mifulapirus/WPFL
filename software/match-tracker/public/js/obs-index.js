@@ -3,8 +3,8 @@
 import { $, esc, toast } from './live.js';
 
 const SOURCES = [
-  { path: '/obs/fight', name: 'Fight bar', what: 'Lower-third for the fight in the arena: both robots with photo, record and faults, the match clock, start countdown, KO / pin counts and the winner. Between fights it shows the next fight.',
-    opts: ['pos=top — bar at the top instead of the bottom', 'idle=hide — no bar between fights', 'demo=1 — loop a fake fight (scene setup only)'] , preview: '?demo=1' },
+  { path: '/obs/fight', name: 'Fight bar', what: 'Lower-third for the fight in the arena: both robots with photo, record and faults, the match clock, start countdown, KO / pin counts and the winner. Between fights it shows the next fight, or the latest result when nothing is queued.',
+    opts: ['pos=top — bar at the top instead of the bottom', 'idle=hide — no bar when no fight is loaded', 'demo=1 — loop a fake fight (scene setup only)'] , preview: '?demo=1' },
   { path: '/obs/bracket', name: 'Bracket', what: 'The Swiss rounds side by side: every pairing, winners and how they won. The live fight glows, the next one is marked.',
     opts: ['rounds=N — most round columns at once (default 5)', 'bg=transparent | green'] },
   { path: '/obs/ranking', name: 'Ranking', what: 'Standings: position, robot, team, wins, losses, KOs and Buchholz. Rows slide to their new place after each result.',

@@ -76,8 +76,8 @@ html[data-bg=green] body{background:#00b140}
 .fb[data-phase=stopped] .fb-phase,.fb[data-phase=time] .fb-phase{color:#ff5a66}
 .fb[data-phase=time] .fb-clock,.fb.low .fb-clock{color:#ff5a66}
 .fb.low .fb-clock{animation:pulse 1s ease-in-out infinite}
-.fb[data-phase=done] .fb-phase{color:var(--green)}
-.fb[data-phase=done] .fb-clock{color:var(--mut)}
+.fb[data-phase=done] .fb-phase,.fb[data-phase=last] .fb-phase{color:var(--green)}
+.fb[data-phase=done] .fb-clock,.fb[data-phase=last] .fb-clock{color:var(--mut)}
 @keyframes pop{0%{transform:scale(1.25)}35%{transform:scale(1)}}
 @keyframes pulse{50%{opacity:.55}}
 @keyframes blink{50%{opacity:.35}}
