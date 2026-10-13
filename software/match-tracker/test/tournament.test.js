@@ -146,3 +146,15 @@ test('fight history: change a result in place, reset one robot\'s results', () =
   T.setResult(doc, { id: f.id, winner: 'red', method: 'ko' });
   assert.throws(() => T.resetRobotResults(doc, f.red), /loaded/);
 });
+
+test('reset all results keeps pairings and byes', () => {
+  const doc = event(5);
+  doc.event.rounds = 2;
+  T.generateRound(doc, rng());
+  playRound(doc);
+  const fights = doc.fights.length;
+  assert.equal(T.resetAllResults(doc), 2);
+  assert.equal(doc.fights.length, fights);
+  assert.equal(doc.fights.filter(f => f.status === 'done').length, 1, 'the bye stays');
+  assert.ok(T.standings(doc).every(s => s.played === 0));
+});

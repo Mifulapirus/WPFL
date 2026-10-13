@@ -228,6 +228,7 @@ const EVENT = {
   'fight.result':   (a, d) => { notLive(d, a.id); T.setResult(d, a); },
   'fight.reset':    (a, d) => T.resetResult(d, a.id),
   'robot.resetResults': (a, d) => ({ cleared: T.resetRobotResults(d, a.id) }),
+  'results.resetAll':   (a, d) => ({ cleared: T.resetAllResults(d) }),
 };
 
 // Commands not tied to one event. Broadcast after.

@@ -71,8 +71,10 @@
 .q .chip{vertical-align:middle}
 .login{max-width:380px;margin:12vh auto 0}
 .login form{display:grid;gap:12px}
-/* fight history (Robots → History) */
-#histList .bf{grid-template-columns:48px minmax(0,1fr) minmax(0,1fr) auto}
-@media (max-width:760px){#histList .bf{grid-template-columns:48px minmax(0,1fr)}}
-#histPick{max-width:240px}
+/* fight history, inside the robot's row */
+.rb-hist{grid-column:1/-1;margin-top:4px;padding:12px;background:var(--s1);border:1px solid var(--line);border-radius:10px}
+.rb-hist .head{margin-bottom:8px}
+.rb-hist .bf{grid-template-columns:48px minmax(0,1fr) minmax(0,1fr) auto;background:var(--s2)}
+@media (max-width:760px){.rb-hist .bf{grid-template-columns:48px minmax(0,1fr)}}
 .rb .rec button{min-width:64px}
+.rb .rec button.sel{background:var(--acc);border-color:var(--acc);color:#fff}

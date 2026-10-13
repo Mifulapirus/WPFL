@@ -131,19 +131,13 @@
       <div class="span-all"><label for="nBio">Battlecard text (public)</label><input type="text" id="nBio" maxlength="220" placeholder="max 220 characters"></div>
     </div>
   </div>
-  <div class="card hide" id="histCard">
-    <div class="head"><h2 id="histTitle">Fight history</h2>
-      <div class="btns"><select id="histPick" aria-label="Robot"></select>
-        <button class="danger" id="histReset">Reset all results</button>
-        <button class="sm icon" id="histClose" title="Close">✕</button></div></div>
-    <div id="histList"></div>
-    <p class="muted mt"><b>Change…</b> corrects the winner or method of a finished fight. <b>Reset</b> sends a fight back to
-      pending: it returns to the fight queue, to be fought again or recorded by hand. Standings, battlecards and the
-      broadcast graphics follow right away. Byes can't be reset — delete the round instead.</p>
-  </div>
   <div class="card">
     <div class="head"><h2 id="robotsTitle">Robots</h2>
-      <div class="seg" id="rbMode"><button data-m="edit" class="sel">Edit</button><button data-m="cards">Card preview</button></div></div>
+      <div class="btns"><button class="danger" id="resetAll" title="Every robot's results back to not fought (pairings stay)">Reset all results</button>
+      <div class="seg" id="rbMode"><button data-m="edit" class="sel">Edit</button><button data-m="cards">Card preview</button></div></div></div>
+    <p class="muted mb" id="rbHistHelp">The record button on a robot (e.g. <b>2–1</b>) opens its fight history right below it:
+      <b>Change…</b> corrects a winner or method, <b>Reset</b> sends a fight back to the queue (fight it again or record it by
+      hand). Byes can't be reset — delete the round instead.</p>
     <div id="robotList"></div>
     <div class="hide" id="cardView">
       <p class="muted mb">Exactly what viewers see on the public <b>Robots</b> tab — also while the event is a draft. Click a card to turn it over; ✎ edits that robot.</p>

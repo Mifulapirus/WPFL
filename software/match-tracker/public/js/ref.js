@@ -364,6 +364,7 @@ function renderRobots(d) {
       ${cardSide(r, 'photo2', 'teamBio', 'Back', 'Card back (public, max 220): the team, who they are, where they’re from…')}
     </div>`).join('') || '<p class="muted">No robots yet.</p>';
   });
+  $('resetAll').disabled = !d.fights.some(f => f.status === 'done' && f.method !== 'bye');
 }
 
 // One side of the battlecard in the edit row: picture + its text (front: robot photo + bio; back: team/action photo + team text).
@@ -384,6 +385,7 @@ $('robotList').oninput = e => {
   c.classList.toggle('warn', e.target.value.length >= BIO_MAX);
 };
 $('robotList').onchange = e => {
+  if (historyChange(e)) return;
   const el = e.target, id = el.closest('.rb')?.dataset.id;
   if (!id || !el.dataset.f) return;
   const args = el.dataset.f === 'active' ? { id, dropped: !el.checked }
@@ -430,6 +432,7 @@ $('robotList').onclick = e => {
     return;
   }
   if (e.target.closest('button[data-hist]')) return openHistory(id);
+  if (e.target.closest('.rb-hist')) return historyClick(e);
   const b = e.target.closest('button[data-del]');
   if (b && confirm('Delete this robot?')) run('robot.remove', { id: b.closest('.rb').dataset.id });
 };
@@ -439,65 +442,83 @@ $('addRobot').onclick = async () => {
   if (r) { toast(`Added ${r.name}`); ['nName', 'nBuilder', 'nTeam', 'nNotes', 'nBio'].forEach(id => $(id).value = ''); $('nName').focus(); }
 };
 
-// ── Fight history (one robot): change a result in place, reset one or all ──
+// ── Fight history: opens inside the robot's row (record button). Change a
+// result in place, reset one fight, or all of that robot's results.
 let histId = null;
 function openHistory(id) {
-  histId = id;
+  histId = histId === id ? null : id;   // the same button again closes it
   sigs.hist = null;
   renderHistory(ev());
-  $('histCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function renderHistory(d) {
+  document.querySelectorAll('#robotList .rb-hist').forEach(e => { if (e.parentElement.dataset.id !== histId) e.remove(); });
+  document.querySelectorAll('#robotList button[data-hist]').forEach(b => b.classList.toggle('sel', b.closest('.rb').dataset.id === histId));
   const r = histId && d.robots.find(x => x.id === histId);
-  $('histCard').classList.toggle('hide', !r);
-  if (!r) return;
+  const row = r && document.querySelector(`#robotList .rb[data-id="${r.id}"]`);
+  if (!row) return;
+  let box = row.querySelector('.rb-hist');
+  if (!box) {   // new, or the robot list was redrawn
+    box = row.appendChild(document.createElement('div'));
+    box.className = 'rb-hist';
+    sigs.hist = null;
+  }
   const mine = d.fights.filter(f => f.red === r.id || f.blue === r.id).sort((a, b) => a.round - b.round || a.seq - b.seq);
   const liveId = d.live?.fightId, n = names(d);
-  const s = d.standings.find(x => x.id === r.id);
-  $('histTitle').textContent = `Fight history — ${r.name}${s ? ` (${s.wins}–${s.losses})` : ''}`;
   const resettable = mine.filter(f => f.status === 'done' && f.method !== 'bye');
-  $('histReset').disabled = !resettable.length || resettable.some(f => f.id === liveId);
-  $('histReset').title = resettable.some(f => f.id === liveId) ? 'One of its fights is loaded — unload it first' : '';
-  renderIf('hist', $('histCard'), [r.id, mine, n, liveId, d.robots.map(x => x.id)], () => {
-    $('histPick').innerHTML = robotOptions(d, r.id);
-    $('histList').innerHTML = mine.map(f => historyRow(f, r.id, n, liveId)).join('') || '<p class="muted">No fights yet.</p>';
+  renderIf('hist', box, [r.id, mine, n, liveId], () => {
+    const blocked = resettable.some(f => f.id === liveId);
+    box.innerHTML = `<div class="head"><h2>Fight history — ${esc(r.name)}</h2>
+        <button class="sm danger" data-hreset ${!resettable.length || blocked ? 'disabled' : ''}
+          title="${blocked ? 'One of its fights is loaded — unload it first' : 'All of this robot’s results back to not fought'}">Reset this robot’s results</button></div>
+      ${mine.map(f => historyRow(f, r.id, n, liveId)).join('') || '<p class="muted">No fights yet.</p>'}`;
   });
 }
 function historyRow(f, id, n, liveId) {
   const me = f.red === id ? 'red' : 'blue', opp = me === 'red' ? 'blue' : 'red';
   const done = f.status === 'done' && f.method !== 'bye';
   const who = s => `<div class="who ${s}${done ? (f.winner === s ? ' w' : ' l') : ''}"><i></i><span>${f[s] ? esc(n[f[s]]) : 'BYE'}</span></div>`;
-  const choose = label => `<select class="sm" data-act="result"><option value="">${label}</option>${[me, opp].flatMap(s =>
+  const choose = label => `<select class="sm" data-hact="result"><option value="">${label}</option>${[me, opp].flatMap(s =>
     ['ko', 'judges', 'forfeit'].filter(m => !(done && f.winner === s && f.method === m)).map(m =>
       `<option value="${s}:${m}">${esc(n[f[s]])} wins · ${METHOD[m]}</option>`)).join('')}</select>`;
   let body = who(me) + who(opp), acts;
   if (f.method === 'bye') { body = who(me) + '<div class="who muted"><span>bye — counts as a win</span></div>'; acts = '<span class="muted">Win · Bye</span>'; }
   else if (f.id === liveId) acts = '<span class="tag">live</span><span class="muted">use the Fight tab</span>';
   else if (done) acts = `<span class="muted">${f.winner === me ? 'Won' : 'Lost'} · ${METHOD[f.method]}${f.durationMs ? ' · ' + fmtClock(f.durationMs) : ''}</span>
-    ${choose('Change…')}<button class="sm" data-act="reset">Reset</button>`;
+    ${choose('Change…')}<button class="sm" data-hact="reset">Reset</button>`;
   else acts = `<span class="muted">not fought</span>${choose('Result…')}`;
   if (f.ranked === false) acts = '<span class="tag">exh</span>' + acts;
-  return `<div class="bf${f.id === liveId ? ' live' : ''}" data-id="${f.id}"><span class="seq">R${f.round}·${f.seq}</span>${body}<div class="acts">${acts}</div></div>`;
+  return `<div class="bf${f.id === liveId ? ' live' : ''}" data-fid="${f.id}"><span class="seq">R${f.round}·${f.seq}</span>${body}<div class="acts">${acts}</div></div>`;
 }
-$('histPick').onchange = e => openHistory(e.target.value);
-$('histClose').onclick = () => { histId = null; $('histCard').classList.add('hide'); };
-$('histList').onclick = e => {
-  const b = e.target.closest('button[data-act="reset"]');
-  if (b && confirm('Clear this result? The fight goes back to the queue.')) run('fight.reset', { id: b.closest('.bf').dataset.id }, 'Result cleared');
-};
-$('histList').onchange = e => {
+// Clicks and changes inside an open history (called from the robot list handlers).
+function historyClick(e) {
+  if (e.target.closest('button[data-hreset]')) {
+    const d = ev(), r = d.robots.find(x => x.id === histId);
+    const n = d.fights.filter(f => (f.red === histId || f.blue === histId) && f.status === 'done' && f.method !== 'bye').length;
+    if (r && confirm(`Clear all ${n} results of ${r.name}? Those fights go back to the queue (their opponents lose those results too).`))
+      run('robot.resetResults', { id: histId }).then(res => res && toast(`Cleared ${res.cleared} result${res.cleared === 1 ? '' : 's'}`));
+    return true;
+  }
+  const b = e.target.closest('button[data-hact="reset"]');
+  if (b && confirm('Clear this result? The fight goes back to the queue.')) run('fight.reset', { id: b.closest('.bf').dataset.fid }, 'Result cleared');
+  return !!b;
+}
+function historyChange(e) {
   const sel = e.target;
-  if (sel.dataset.act !== 'result' || !sel.value) return;
-  const id = sel.closest('.bf').dataset.id, [winner, method] = sel.value.split(':');
+  if (sel.dataset.hact !== 'result') return false;
+  if (!sel.value) return true;
+  const id = sel.closest('.bf').dataset.fid, [winner, method] = sel.value.split(':');
   const f = ev().fights.find(x => x.id === id), name = f && names(ev())[f[winner]];
   if (confirm(`Record ${name} (${winner}) win by ${METHOD[method]}?`)) run('fight.result', { id, winner, method }, 'Result saved');
   else sel.value = '';
-};
-$('histReset').onclick = async () => {
-  const d = ev(), r = d.robots.find(x => x.id === histId);
-  const n = d.fights.filter(f => (f.red === histId || f.blue === histId) && f.status === 'done' && f.method !== 'bye').length;
-  if (!r || !confirm(`Clear all ${n} results of ${r.name}? Those fights go back to the queue (their opponents lose those results too).`)) return;
-  const res = await run('robot.resetResults', { id: histId });
+  return true;
+}
+$('resetAll').onclick = async () => {
+  const d = ev();
+  const n = d.fights.filter(f => f.status === 'done' && f.method !== 'bye').length;
+  if (!n) return toast('No results to reset');
+  if (!confirm(`Reset ALL ${n} results of "${d.event.name}"? Every fight goes back to not fought; pairings and byes stay.`)) return;
+  if (!confirm('Are you sure? Standings go back to zero. This cannot be undone (download a backup in Event first if unsure).')) return;
+  const res = await run('results.resetAll', {});
   if (res) toast(`Cleared ${res.cleared} result${res.cleared === 1 ? '' : 's'}`);
 };
 

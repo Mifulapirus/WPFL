@@ -350,6 +350,14 @@ export function resetRobotResults(doc, id) {
   return fights.length;
 }
 
+// Clear every result of the event (byes stay). Pairings are kept.
+export function resetAllResults(doc) {
+  const fights = doc.fights.filter(f => f.status === 'done' && f.method !== 'bye');
+  if (fights.some(f => isLive(doc, f))) fail('A fight is loaded — unload it first');
+  for (const f of fights) resetResult(doc, f.id);
+  return fights.length;
+}
+
 // Pending fights in running order, with each robot's rest so far (ms) — the
 // referee sees who is fresh enough for the next fight.
 export function queue(doc, now = Date.now()) {
