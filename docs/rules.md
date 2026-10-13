@@ -1,6 +1,6 @@
 # Event rules — summary for builders of arena systems
 
-**Official rules:** [wpfl.thehomelab.dev](https://wpfl.thehomelab.dev/) — *WPFL @ ASMBLY Rules, Rev 2, Oct 2 2026*
+**Official rules:** [wpfl.thehomelab.dev](https://wpfl.thehomelab.dev/) — *WPFL @ ASMBLY Rules, Rev 3, Oct 13 2026*
 (contact: WeaponizedPlastic@asmbly.org). This page only extracts what matters for the arena, its lights and the
 match tracker. **If anything here disagrees with the official document, the official document wins.**
 
@@ -23,7 +23,9 @@ match tracker. **If anything here disagrees with the official document, the offi
 ## Robots (rules §C, abbreviated)
 
 1 kg max, must fit a 30 × 30 × 30 cm box, 3D-printed/plastic weapons and bodies, no metal cutting/impact edges,
-battery ≤ 50 V, physical weapon lock, fail-safe on signal loss, easily accessed power switch.
+battery ≤ 50 V, physical weapon lock, fail-safe on signal loss, easily accessed power switch. Non-plastic armor (cardboard,
+foam, balsa…) max 12 mm thick. One exact-replica backup robot allowed; spare parts unlimited. Pre-fight safety
+inspection may be enforced.
 
 ## Match flow (rules §E) — what the lights and tracker must support
 
