@@ -70,7 +70,10 @@ tabs edit; the **Fight** tab always runs the live event.
 6. When the last round is decided, viewers get the champion, podium and final ranking automatically.
 7. **Event → End event** saves it to Past events; the public page goes back to the next upcoming event.
 
-Mistakes: **Bracket → Edit → Reset** clears a result; **Result…** records one by hand; **Add a fight** creates extra or
+Mistakes: **Robots → History** on a robot lists all its fights: **Change…** corrects a winner or method in place,
+**Reset** sends one fight back to pending (fight it again, or record it by hand), **Reset all results** does that for
+every fight of that robot (byes stay — delete the round instead). The same is in **Bracket → Edit**: **Reset** clears a
+result; **Result…** records one by hand; **Add a fight** creates extra or
 exhibition fights (exhibitions don't count). The fight queue warns when a robot rested less than the minimum.
 Standings: wins → Buchholz (sum of opponents' wins) → fewer losses → name.
 
@@ -207,7 +210,7 @@ Server → client: `{"type":"state","serverNow":ms,"data":…}` on connect and a
 on connect and after every change (referee sockets also every 5 s for LED link stats).
 Client → server: `{"type":"time","t":ms}` (clock sync) and, referees only, `{"type":"cmd","op":"…","args":{…},"id":n}` →
 `{"type":"reply","id":n,"ok":true}` or `{"type":"reply","id":n,"error":"…"}` (sent after the resulting state).
-Ops: `event.update`, `robot.add|update|remove|photo`, `round.generate|delete`, `fight.add|update|swap|move|remove|result|reset`,
+Ops: `event.update`, `robot.add|update|remove|photo|resetResults`, `round.generate|delete`, `fight.add|update|swap|move|remove|result|reset`,
 `live.load|start|pause|stop|fault|count|cancelCount|end|unload`, `led.scene`, `event.create|update|status|delete|image`, `archive.restore|delete`, `robots.import|copyFrom`.
 Commands carry `ev` (the event id); `live.*` always act on the live event.
 Read-only JSON: `GET /api/state`, `GET /api/archive` (past events), `GET /api/archive/<id>`; referees:

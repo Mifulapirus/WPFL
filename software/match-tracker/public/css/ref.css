@@ -71,3 +71,8 @@
 .q .chip{vertical-align:middle}
 .login{max-width:380px;margin:12vh auto 0}
 .login form{display:grid;gap:12px}
+/* fight history (Robots → History) */
+#histList .bf{grid-template-columns:48px minmax(0,1fr) minmax(0,1fr) auto}
+@media (max-width:760px){#histList .bf{grid-template-columns:48px minmax(0,1fr)}}
+#histPick{max-width:240px}
+.rb .rec button{min-width:64px}
