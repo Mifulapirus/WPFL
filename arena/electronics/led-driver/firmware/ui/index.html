@@ -4,89 +4,169 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>WPFL Arena LEDs</title>
-<meta name="theme-color" content="#1a1a2e">
+<meta name="theme-color" content="#0e1014">
 <!--
   WPFL Arena LED Driver — web UI (embedded into firmware by scripts/embed_web_ui.py)
   Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev)
   Non-Commercial Source-Available License. Derived from the Rotato controller UI.
   Protocol: docs/protocols/arena-led-websocket.md
+  Plain CSS + JS, no external assets: everything here ships gzipped inside the firmware.
 -->
 <style>
-:root{--bg:#1a1a2e;--card:#16213e;--card2:#0f3460;--fg:#eee;--mut:#9aa3b5;--acc:#e94560;--ok:#4caf50;--line:#2a3558}
+:root{--bg:#0e1014;--s1:#16191f;--s2:#1f232b;--s3:#2a2f39;--line:#2c313b;--fg:#e8eaed;--mut:#8d95a3;
+  --acc:#ff4757;--ok:#2ecc71;--red:#e53935;--yel:#f5b400;--grn:#2e9e4f;--blue:#1e88e5;--r:12px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',Arial,sans-serif;padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom));max-width:760px;margin:0 auto}
-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-header h1{font-size:1.25rem;color:var(--acc);letter-spacing:1px;flex:1;white-space:nowrap}
-#dot{width:14px;height:14px;border-radius:50%;background:#777;flex:none}
-#dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-#label{font-size:.75rem;background:var(--card2);padding:4px 10px;border-radius:12px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-nav{display:flex;gap:6px;margin-bottom:10px}
-nav button{flex:1}
-nav button.sel{background:var(--acc);border-color:var(--acc)}
-.card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px}
-.card h2{font-size:.8rem;text-transform:uppercase;color:var(--mut);letter-spacing:1px;margin-bottom:8px;font-weight:600}
-button,select,input{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-button{cursor:pointer;touch-action:manipulation;user-select:none}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  padding-bottom:env(safe-area-inset-bottom)}
+main{max-width:1440px;margin:0 auto;padding:16px}
+
+/* ── Navbar: one line at every width ── */
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar>div{max-width:1440px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.5px;white-space:nowrap;flex:none}
+.brand b{color:var(--acc)}
+#dot{width:10px;height:10px;border-radius:50%;background:#555;flex:none}
+#dot.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+#label{font-size:.8rem;color:var(--mut);background:var(--s2);padding:3px 10px;border-radius:99px;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav{margin-left:auto;display:flex;background:var(--s1);border:1px solid var(--line);border-radius:10px;padding:3px;flex:none}
+nav button{border:0;background:none;padding:7px 14px;border-radius:7px;color:var(--mut);font-weight:600}
+nav button.sel{background:var(--s3);color:var(--fg)}
+@media (max-width:520px){#label,.brand span{display:none}nav button{padding:7px 10px}}
+
+/* ── Building blocks ── */
+.card{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--mut);font-weight:600}
+.head h2{margin:0}
+.card>h2{margin-bottom:12px}
+.muted{color:var(--mut);font-size:.82rem}
+.hide{display:none!important}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stack{display:grid;gap:12px}
+
+button,select,input{font:inherit;color:var(--fg);background:var(--s2);border:1px solid var(--line);border-radius:10px;
+  padding:8px 12px;min-height:40px}
+button{cursor:pointer;touch-action:manipulation;user-select:none;font-weight:600;transition:background .15s}
+button:hover{background:var(--s3)}
 button:active{transform:scale(.97)}
 button:disabled{opacity:.4}
-input[type=number]{width:72px}
-input[type=color]{padding:2px;width:44px;height:36px}
-input[type=checkbox]{width:18px;height:18px;accent-color:var(--acc)}
-label{font-size:.85rem;color:var(--mut)}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.row>label{min-width:110px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.big{font-size:1.15rem;font-weight:700;padding:20px 6px;border:none;letter-spacing:1px}
-.big.active{outline:3px solid #fff;outline-offset:-3px}
-.mid{font-weight:600;padding:12px 4px}
-.mid.active{outline:2px solid #fff;outline-offset:-2px}
-.wide{grid-column:1/-1}
-.b-red{background:#c62828}.b-yel{background:#f9a825;color:#222}.b-grn{background:#2e7d32}
-.b-cd{background:linear-gradient(90deg,#c62828,#ef6c00,#2e7d32)}
-.b-blue{background:#1565c0}
-.danger{border-color:var(--acc);color:var(--acc);background:transparent}
-.preview{position:relative}
-#arena{width:100%;height:auto;display:block}
+.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.pri:hover{background:#ff6070}
+.danger{border-color:#5a2a30;color:#ff8a94;background:transparent}
+.danger:hover{background:#2a1418}
+select{padding-right:8px}
+input[type=number]{width:84px}
+input[type=text],input[type=password]{width:100%;min-width:0}
+input[type=color]{padding:3px;width:48px;height:40px;cursor:pointer}
+input[type=range]{width:100%;padding:0;border:0;background:none;accent-color:var(--acc);min-height:32px}
+input[type=file]{width:100%;font-size:.85rem}
+/* checkbox → switch */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:40px;height:22px;min-height:0;padding:0;border-radius:99px;
+  background:var(--s3);border:0;position:relative;cursor:pointer;flex:none;transition:background .15s}
+input[type=checkbox]::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
+  background:#cfd3da;transition:transform .15s}
+input[type=checkbox]:checked{background:var(--acc)}
+input[type=checkbox]:checked::after{transform:translateX(18px);background:#fff}
+label{color:var(--mut);font-size:.88rem}
+.sw{display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}
+
+/* form rows: label | control */
+.f{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px 12px;align-items:center}
+.f>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+/* form fields: label above control, auto columns */
+.fields{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.fields>div{display:grid;gap:6px;align-content:start}
+.fields input[type=number],.fields select{width:100%}
+
+/* ── Tabs ── */
+.tab{display:grid;gap:16px}
+#tab-settings{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));align-items:start}
+
+/* Control: arena | button pad */
+#tab-control{grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr)}
+@media (max-width:860px){#tab-control{grid-template-columns:1fr}}
+/* desktop: fill the screen so the buttons get as big as possible */
+@media (min-width:861px) and (min-height:560px){#tab-control{height:calc(100vh - 100px)}}
+.preview{position:relative;display:flex;flex-direction:column;justify-content:center}
+#arena{width:100%;height:auto;max-height:calc(100vh - 140px);display:block}
 #arena .px{stroke:#000;stroke-width:1}
 #arena .sec{cursor:pointer}
-#arena text{fill:var(--mut);font-size:9px}
-#cdbig{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:4.5rem;font-weight:800;text-shadow:0 0 18px #000;pointer-events:none}
-#rows .r{display:flex;gap:2px;align-items:center;margin-top:4px;font-size:.7rem;color:var(--mut)}
+#arena text{fill:var(--mut);font-size:9px;pointer-events:none;paint-order:stroke;stroke:var(--s1);stroke-width:3px}
+#cdbig{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(3rem,10vw,7rem);
+  font-weight:800;text-shadow:0 0 24px #000;pointer-events:none}
+#rows .r{display:flex;gap:2px;align-items:center;margin-top:4px;font-size:.72rem;color:var(--mut);cursor:pointer}
 #rows .r span{width:70px}
 #rows i{display:inline-block;width:10px;height:10px;border:1px solid #000}
-table{width:100%;border-collapse:collapse;font-size:.9rem}
-td{padding:4px 2px;border-bottom:1px solid var(--line)}
-td input[type=text]{width:100%;min-width:70px}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{font-size:.75rem;padding:4px 8px;border-radius:12px}
-.chip.on{background:var(--acc);border-color:var(--acc)}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.85rem}
+
+.pad{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:minmax(58px,1fr);gap:10px;height:100%}
+.pad button{border:0;font-size:clamp(.95rem,1.4vw,1.2rem);letter-spacing:1px;padding:4px;border-radius:12px}
+.pad .c4{grid-column:span 4}.pad .c3{grid-column:span 3}.pad .c6{grid-column:span 6}.pad .c12{grid-column:span 12}
+.pad .tall{grid-row:span 2;font-size:clamp(1.1rem,2vw,1.6rem);font-weight:800}
+.pad .active{box-shadow:inset 0 0 0 3px #fff}
+.pad .sub{font-size:.8rem;font-weight:600}
+.b-red{background:var(--red);color:#fff}.b-yel{background:var(--yel);color:#1a1a1a}.b-grn{background:var(--grn);color:#fff}
+.b-blue{background:var(--blue);color:#fff}
+.b-cd{background:linear-gradient(90deg,var(--red),#ef6c00 50%,var(--grn));color:#fff}
+.b-red:hover{background:#ef4b47}.b-yel:hover{background:#ffc21a}.b-grn:hover{background:#36b15b}.b-blue:hover{background:#3d98ea}
+.f-red{background:transparent;border:2px solid var(--red)!important;color:#ff8a87}
+.f-blue{background:transparent;border:2px solid var(--blue)!important;color:#7dbcf3}
+.f-red:hover{background:#2a1416}.f-blue:hover{background:#13202e}
+
+/* Setup: section rows */
+.secs{display:grid;gap:8px}
+.sr{display:grid;gap:8px;align-items:center;padding:8px;background:var(--s2);border-radius:10px;
+  grid-template-columns:28px minmax(120px,320px) auto auto 1fr 40px 40px 40px;grid-template-areas:"idx name px rev . up dn del"}
+.sr .idx{grid-area:idx;color:var(--mut);font-weight:600;text-align:center}
+.sr .name{grid-area:name}.sr .step{grid-area:px}.sr .sw{grid-area:rev}
+.sr [data-a=up]{grid-area:up}.sr [data-a=dn]{grid-area:dn}.sr [data-a=del]{grid-area:del}
+.sr button{padding:0}
+.sr input[type=text]{background:var(--s1)}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:36px;padding:0}
+.step input{width:58px;text-align:center;background:var(--s1)}
+@media (max-width:640px){
+  .sr{grid-template-columns:28px auto 1fr 40px 40px;grid-template-areas:"idx name name name del" ". px rev up dn"}
+}
+.grp{display:grid;gap:8px;align-items:center;padding:8px;background:var(--s2);border-radius:10px;
+  grid-template-columns:160px minmax(0,1fr) 40px}
+.grp input{background:var(--s1)}
+.grp>button{padding:0}
+@media (max-width:640px){.grp{grid-template-columns:1fr 40px}.grp .chips{grid-column:1/-1;grid-row:2}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.8rem;padding:4px 10px;border-radius:99px;min-height:30px;background:var(--s1)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.bri{display:flex;align-items:center;gap:16px}
+.bri b{min-width:48px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* Settings */
+.swatches{display:flex;gap:14px;flex-wrap:wrap}
+.swatches label{display:grid;justify-items:center;gap:4px;font-size:.75rem}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:.88rem}
 .kv span:nth-child(odd){color:var(--mut)}
-.muted{color:var(--mut);font-size:.8rem}
-.hide{display:none!important}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;font-size:.9rem;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}
+progress{width:100%;accent-color:var(--acc)}
+
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000d;padding:10px 16px;border-radius:10px;
+  font-size:.9rem;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;z-index:9}
 #toast.show{opacity:1}
-#toast.err{background:#b71c1cdd}
-.robot{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px}
-.robot b{width:52px}
-progress{width:100%}
+#toast.err{background:#b71c1cee}
 </style>
 </head>
 <body>
-<header>
-  <div id="dot" title="WebSocket"></div>
-  <h1>WPFL ARENA</h1>
-  <div id="label">—</div>
-</header>
-<nav>
-  <button data-tab="control" class="sel">Control</button>
-  <button data-tab="setup">Setup</button>
-  <button data-tab="settings">Settings</button>
-</nav>
+<header class="bar"><div>
+  <div class="brand"><i id="dot" title="WebSocket"></i><b>WPFL</b><span>Arena</span></div>
+  <span id="label" title="Current scene">—</span>
+  <nav>
+    <button data-tab="control" class="sel">Control</button>
+    <button data-tab="setup">Setup</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+</div></header>
 
+<main>
 <!-- ═════════════════════════ CONTROL ═════════════════════════ -->
-<section id="tab-control">
+<section id="tab-control" class="tab">
   <div class="card preview">
     <svg id="arena" viewBox="0 0 340 240"></svg>
     <div id="cdbig"></div>
@@ -94,135 +174,166 @@ progress{width:100%}
   </div>
 
   <div class="card">
-    <div class="grid3">
-      <button class="big b-red"  data-q="stop">STOP</button>
-      <button class="big b-yel"  data-q="pause">PAUSE</button>
-      <button class="big b-grn"  data-q="fight">FIGHT</button>
-      <button class="big b-cd wide" data-q="countdown" id="cdBtn">COUNTDOWN</button>
+    <div class="pad">
+      <button class="c4 tall b-red" data-q="stop">STOP</button>
+      <button class="c4 tall b-yel" data-q="pause">PAUSE</button>
+      <button class="c4 tall b-grn" data-q="fight">FIGHT</button>
+      <button class="c12 tall b-cd" data-q="countdown" id="cdBtn">COUNTDOWN</button>
+      <button class="c3" data-q="off">OFF</button>
+      <button class="c3" data-q="white">WHITE</button>
+      <button class="c3" data-q="rainbow">RAINBOW</button>
+      <button class="c3" data-q="ko" title="Rules E.4 — incapacitated robot">10 s</button>
+      <button class="c6 f-red" data-q="redFault">RED FAULT</button>
+      <button class="c6 b-red" data-q="redWins">RED WINS</button>
+      <button class="c6 f-blue" data-q="blueFault">BLUE FAULT</button>
+      <button class="c6 b-blue" data-q="blueWins">BLUE WINS</button>
     </div>
-    <div class="grid4" style="margin-top:8px">
-      <button class="mid" data-q="off">OFF</button>
-      <button class="mid" data-q="white">WHITE</button>
-      <button class="mid" data-q="rainbow">RAINBOW</button>
-      <button class="mid" data-q="ko" title="Rules E.4 — incapacitated robot">10 s COUNT</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Robots</h2>
-    <div class="robot"><b style="color:#ef5350">RED</b>
-      <button class="mid" data-q="redFault">Fault</button><button class="mid b-red" data-q="redWins">Wins</button></div>
-    <div class="robot"><b style="color:#42a5f5">BLUE</b>
-      <button class="mid" data-q="blueFault">Fault</button><button class="mid b-blue" data-q="blueWins">Wins</button></div>
-    <p class="muted">Fault = side blinks yellow for 3 s, then returns. Uses groups “red” / “blue”.</p>
-  </div>
-
-  <div class="card">
-    <h2>Brightness <span id="briVal"></span></h2>
-    <input type="range" id="bri" min="0" max="255" style="width:100%">
-  </div>
-
-  <div class="card">
-    <h2>Custom</h2>
-    <div class="row"><label>Target</label><select id="cTarget"></select></div>
-    <div class="row"><label>Effect</label><select id="cFx">
-      <option>solid</option><option>blink</option><option>breathe</option><option>rainbow</option>
-      <option>chase</option><option>sparkle</option><option>progress</option><option>off</option></select></div>
-    <div class="row"><label>Colors</label><input type="color" id="cC1" value="#ff0000"><input type="color" id="cC2" value="#000000"></div>
-    <div class="row"><label>Period (ms)</label><input type="number" id="cPer" value="1000" min="20" max="60000"></div>
-    <div class="row"><label>Duration (ms)</label><input type="number" id="cDur" value="0" min="0"><span class="muted">0 = forever</span></div>
-    <div class="row"><label>Progress %</label><input type="number" id="cVal" value="50" min="0" max="100"></div>
-    <div class="row"><label>Overlay</label><input type="checkbox" id="cOv"><span class="muted">stack on top instead of replacing</span></div>
-    <div class="row"><button id="cApply">Apply</button><button id="cCancel">Cancel effects on target</button></div>
   </div>
 </section>
 
 <!-- ═════════════════════════ SETUP ═════════════════════════ -->
-<section id="tab-setup" class="hide">
+<section id="tab-setup" class="tab hide">
   <div class="card">
-    <h2>Sections (wiring order)</h2>
-    <p class="muted" style="margin-bottom:8px">1 pixel = one 10 cm WS2811 segment. Order = data-chain order on each output.
-      Ceiling runs clockwise seen from above; edges run top → bottom. Tick “rev” if a run was installed backwards.</p>
-    <table><thead><tr><td></td><td>Name</td><td>Pixels</td><td>Out</td><td>Rev</td><td></td></tr></thead>
-      <tbody id="secBody"></tbody></table>
-    <div class="row" style="margin-top:8px"><button id="secAdd">+ Section</button>
-      <span class="muted" id="secTotals"></span></div>
-    <div class="row"><input type="checkbox" id="liveApply" checked><label for="liveApply" style="min-width:0">Apply count changes instantly</label></div>
+    <div class="head"><h2>Brightness</h2></div>
+    <div class="bri"><input type="range" id="bri" min="0" max="255"><b id="briVal">—</b></div>
   </div>
+
   <div class="card">
-    <h2>Groups</h2>
-    <div id="grpList"></div>
-    <div class="row" style="margin-top:8px"><button id="grpAdd">+ Group</button></div>
+    <div class="head"><h2>Sections — wiring order</h2>
+      <div class="btns"><button id="identOn">Identify</button><button id="identOff">Stop identify</button>
+        <button id="layoutSave" class="pri">Save layout</button>
+        <button id="layoutReset" class="danger" title="Back to the default 8-section layout">Reset</button></div></div>
+    <div class="secs" id="secBody"></div>
+    <div class="head" style="margin:12px 0 0">
+      <div class="btns"><button id="secAdd">+ Section</button><span class="muted" id="secTotals"></span></div>
+      <label class="sw"><input type="checkbox" id="liveApply" checked>Apply count changes instantly</label>
+    </div>
+    <p class="muted" style="margin-top:12px">1 pixel = one 10 cm segment. The list order is the order along the data
+      chain. Ceiling pieces run clockwise seen from above, edges top → bottom. <b>Reversed</b>: turn on for a piece
+      mounted the other way round (data arrows pointing backwards); the driver flips it so you don't have to rewire.
+      <b>Identify</b> gives each section its own color with a white first pixel.</p>
   </div>
+
   <div class="card">
-    <div class="row"><button id="layoutSave">Save layout</button><button id="layoutReset" class="danger">Reset to default</button></div>
-    <div class="row"><button id="identOn">Identify sections</button><button id="identOff">Stop identify</button></div>
-    <p class="muted">Identify: each section gets its own color; its first pixel is white (shows direction).</p>
+    <div class="head"><h2>Groups</h2><button id="grpAdd">+ Group</button></div>
+    <div class="stack" id="grpList"></div>
+    <p class="muted" style="margin-top:12px">Tap sections to add or remove them, then <b>Save layout</b>. Groups are
+      command targets — <b>red</b> / <b>blue</b> are the robot sides used by Fault and Wins.</p>
   </div>
+
   <div class="card">
-    <h2>Pixel probe</h2>
-    <div class="row"><select id="pSec"></select>
-      <button id="pDec">−</button><input type="number" id="pIdx" value="0" min="0"><button id="pInc">+</button>
-      <button id="pGo">Light</button></div>
-    <p class="muted">Lights one pixel white (everything else off) — count pixels after cutting.</p>
+    <div class="head"><h2>Pixel probe</h2></div>
+    <div class="btns"><select id="pSec"></select>
+      <div class="step"><button id="pDec">−</button><input type="number" id="pIdx" value="0" min="0"><button id="pInc">+</button></div>
+      <button id="pGo" class="pri">Light</button>
+      <span class="muted">One pixel white, everything else off — handy for counting after cutting.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="head"><h2>Custom effect</h2>
+      <div class="btns"><button id="cCancel">Cancel effects on target</button><button id="cApply" class="pri">Apply</button></div></div>
+    <div class="fields">
+      <div><label for="cTarget">Target</label><select id="cTarget"></select></div>
+      <div><label for="cFx">Effect</label><select id="cFx">
+        <option>solid</option><option>blink</option><option>breathe</option><option>rainbow</option>
+        <option>chase</option><option>sparkle</option><option>progress</option><option>off</option></select></div>
+      <div><label>Colors</label><div class="btns"><input type="color" id="cC1" value="#ff0000"><input type="color" id="cC2" value="#000000"></div></div>
+      <div><label for="cPer">Period (ms)</label><input type="number" id="cPer" value="1000" min="20" max="60000"></div>
+      <div><label for="cDur">Duration (ms, 0 = forever)</label><input type="number" id="cDur" value="0" min="0"></div>
+      <div><label for="cVal">Progress %</label><input type="number" id="cVal" value="50" min="0" max="100"></div>
+      <div><label for="cOv">Overlay (stack on top)</label><input type="checkbox" id="cOv"></div>
+    </div>
+    <p class="muted" style="margin-top:12px">Tip: tap a section in the Control preview to make it the target.</p>
   </div>
 </section>
 
 <!-- ═════════════════════════ SETTINGS ═════════════════════════ -->
-<section id="tab-settings" class="hide">
+<section id="tab-settings" class="tab hide">
   <div class="card">
     <h2>LED strip</h2>
-    <div class="row"><label>Color order</label><select id="sOrder">
-      <option>GRB</option><option>RGB</option><option>RBG</option><option>GBR</option><option>BRG</option><option>BGR</option></select></div>
-    <div class="row"><label>Gamma</label><input type="checkbox" id="sGamma"></div>
-    <div class="row"><label>Max watts</label><input type="number" id="sMaxW" min="0" max="2000"><span class="muted">0 = no limit</span></div>
-    <div class="row"><label>W per pixel</label><input type="number" id="sWpp" step="0.1" min="0.01" max="20"><span class="muted">full white</span></div>
-    <div class="row"><label>Boot scene</label><select id="sBoot"></select></div>
-    <div class="row"><label>Buzzer</label><input type="checkbox" id="sBuzz"></div>
+    <div class="f">
+      <label for="sOrder">Color order</label><div><select id="sOrder">
+        <option>RGB</option><option>GRB</option><option>RBG</option><option>GBR</option><option>BRG</option><option>BGR</option></select></div>
+      <label for="sGamma">Gamma</label><div><input type="checkbox" id="sGamma"></div>
+      <label for="sMaxW">Max watts</label><div><input type="number" id="sMaxW" min="0" max="2000"><span class="muted">0 = no limit</span></div>
+      <label for="sWpp">W per pixel</label><div><input type="number" id="sWpp" step="0.1" min="0.01" max="20"><span class="muted">at full white</span></div>
+      <label for="sBoot">Boot scene</label><div><select id="sBoot"></select></div>
+      <label for="sBuzz">Buzzer</label><div><input type="checkbox" id="sBuzz"></div>
+    </div>
   </div>
+
   <div class="card">
     <h2>Countdown</h2>
-    <div class="row"><label>Seconds</label><input type="number" id="sCdSec" step="0.5" min="0" max="600"></div>
-    <div class="row"><label>Warn at (s)</label><input type="number" id="sCdWarn" step="0.5" min="0" max="600"></div>
-    <div class="row"><label>GO flash (ms)</label><input type="number" id="sCdGo" min="0" max="30000"></div>
-    <div class="row"><label>Colors</label>
-      <input type="color" id="sCdHigh" title="High"><input type="color" id="sCdWarnC" title="Warn">
-      <input type="color" id="sCdGoC" title="Go"><input type="color" id="sCdThen" title="Then"></div>
-    <div class="row"><label>After GO</label><input type="checkbox" id="sCdThenOn"><span class="muted">hold “then” color (else: back to what was showing)</span></div>
-    <div class="row"><button id="sSave">Save LED + countdown settings</button></div>
+    <div class="f">
+      <label for="sCdSec">Seconds</label><div><input type="number" id="sCdSec" step="0.5" min="0" max="600"></div>
+      <label for="sCdWarn">Warn at (s)</label><div><input type="number" id="sCdWarn" step="0.5" min="0" max="600"></div>
+      <label for="sCdGo">GO flash (ms)</label><div><input type="number" id="sCdGo" min="0" max="30000"></div>
+      <label>Colors</label><div class="swatches">
+        <label>Start<input type="color" id="sCdHigh"></label>
+        <label>Warn<input type="color" id="sCdWarnC"></label>
+        <label>GO flash<input type="color" id="sCdGoC"></label>
+        <label>After GO<input type="color" id="sCdThen"></label></div>
+      <label for="sCdThenOn">Hold after GO</label><div><input type="checkbox" id="sCdThenOn">
+        <span class="muted">off = back to what was showing</span></div>
+    </div>
+    <p class="muted" style="margin:12px 0">Start until “warn at”, Warn until 0, GO flashes, then After GO.</p>
+    <button id="sSave" class="pri">Save LED + countdown settings</button>
   </div>
+
   <div class="card">
     <h2>Network</h2>
-    <div class="kv" style="margin-bottom:10px"><span>Mode</span><span id="nMode">—</span><span>IP</span><span id="nIp">—</span>
+    <div class="kv" style="margin-bottom:14px"><span>Mode</span><span id="nMode">—</span><span>IP</span><span id="nIp">—</span>
       <span>Network</span><span id="nSsid">—</span><span>Signal</span><span id="nRssi">—</span></div>
-    <div class="row"><label>WiFi SSID</label><input type="text" id="wSsid" list="wList"><datalist id="wList"></datalist><button id="wScan">Scan</button></div>
-    <div class="row"><label>Password</label><input type="password" id="wPass" placeholder="(unchanged)"></div>
-    <div class="row"><label>Static IP</label><input type="checkbox" id="wStatic"></div>
-    <div id="wStaticBox" class="hide">
-      <div class="row"><label>IP</label><input type="text" id="wIp" placeholder="192.168.1.50"></div>
-      <div class="row"><label>Gateway</label><input type="text" id="wGw"></div>
-      <div class="row"><label>Mask</label><input type="text" id="wMask" value="255.255.255.0"></div>
-      <div class="row"><label>DNS</label><input type="text" id="wDns" placeholder="(gateway)"></div>
+    <div class="f">
+      <label for="wSsid">WiFi SSID</label><div style="flex-wrap:nowrap"><input type="text" id="wSsid" list="wList"><datalist id="wList"></datalist><button id="wScan">Scan</button></div>
+      <label for="wPass">Password</label><div><input type="password" id="wPass" placeholder="(unchanged)"></div>
+      <label for="wStatic">Static IP</label><div><input type="checkbox" id="wStatic"></div>
     </div>
-    <div class="row"><button id="wSave">Save &amp; reboot</button><button id="wForget" class="danger">Forget network</button></div>
+    <div id="wStaticBox" class="f hide" style="margin-top:8px">
+      <label for="wIp">IP</label><div><input type="text" id="wIp" placeholder="192.168.1.50"></div>
+      <label for="wGw">Gateway</label><div><input type="text" id="wGw"></div>
+      <label for="wMask">Mask</label><div><input type="text" id="wMask" value="255.255.255.0"></div>
+      <label for="wDns">DNS</label><div><input type="text" id="wDns" placeholder="(gateway)"></div>
+    </div>
+    <div class="btns" style="margin-top:14px"><button id="wSave" class="pri">Save &amp; reboot</button><button id="wForget" class="danger">Forget network</button></div>
   </div>
+
+  <div class="card">
+    <h2>Match server</h2>
+    <div class="kv" style="margin-bottom:14px"><span>Status</span><span id="uState">—</span></div>
+    <div class="f">
+      <label for="uOn">Connect</label><div><input type="checkbox" id="uOn"></div>
+      <label for="uUrl">URL</label><div><input type="text" id="uUrl" placeholder="wss://wpfl-asmbly.thehomelab.dev/led"></div>
+      <label for="uKey">Key</label><div><input type="password" id="uKey" placeholder="(unchanged)" autocomplete="off"></div>
+    </div>
+    <p class="muted" style="margin:12px 0">The driver connects <b>out</b> to the match tracker, so it works from any network
+      with internet. Key = the tracker's <code>LED_KEY</code>. Needs WiFi (not hotspot-only mode).</p>
+    <button id="uSave" class="pri">Save</button>
+  </div>
+
   <div class="card">
     <h2>Device</h2>
-    <div class="row"><label>Hostname</label><input type="text" id="dHost"><span class="muted">.local</span></div>
-    <div class="row"><label>Hotspot SSID</label><input type="text" id="dApSsid"></div>
-    <div class="row"><label>Hotspot pass</label><input type="password" id="dApPass" placeholder="(unchanged)"></div>
-    <div class="row"><button id="dSave">Save &amp; reboot</button></div>
-    <div class="row"><label>Control token</label><input type="password" id="dToken" placeholder="(empty = open)"><button id="dTokSet">Set</button></div>
-    <p class="muted">With a token, only clients that send it (this browser remembers it) can change the lights.</p>
+    <div class="f">
+      <label for="dHost">Hostname</label><div style="flex-wrap:nowrap"><input type="text" id="dHost"><span class="muted">.local</span></div>
+      <label for="dApSsid">Hotspot SSID</label><div><input type="text" id="dApSsid"></div>
+      <label for="dApPass">Hotspot pass</label><div><input type="password" id="dApPass" placeholder="(unchanged)"></div>
+    </div>
+    <div class="btns" style="margin:14px 0"><button id="dSave" class="pri">Save &amp; reboot</button></div>
+    <div class="f">
+      <label for="dToken">Control token</label><div style="flex-wrap:nowrap"><input type="password" id="dToken" placeholder="(empty = open)"><button id="dTokSet">Set</button></div>
+    </div>
+    <p class="muted" style="margin-top:8px">With a token, only clients that send it (this browser remembers it) can change the lights.</p>
   </div>
+
   <div class="card">
     <h2>System</h2>
     <div class="kv" id="sys"></div>
-    <div class="row" style="margin-top:10px"><input type="file" id="otaFile" accept=".bin"><button id="otaGo">Update firmware</button></div>
-    <progress id="otaProg" value="0" max="100" class="hide"></progress>
-    <div class="row"><button id="reboot">Reboot</button><button id="factory" class="danger">Factory reset</button></div>
+    <div class="btns" style="margin-top:14px;flex-wrap:nowrap"><input type="file" id="otaFile" accept=".bin"><button id="otaGo" class="pri">Update</button></div>
+    <progress id="otaProg" value="0" max="100" class="hide" style="margin-top:8px"></progress>
+    <div class="btns" style="margin-top:14px"><button id="reboot">Reboot</button><button id="factory" class="danger">Factory reset</button></div>
   </div>
 </section>
+</main>
 <div id="toast"></div>
 
 <script>
@@ -294,10 +405,14 @@ function drawArena() {
   const el = (n, a) => { const e = document.createElementNS(ns, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
   svg.innerHTML = ''; pixEls = []; $('rows').innerHTML = '';
   const f = k => [C[k][0], C[k][1] + DROP];
-  svg.appendChild(el('polygon', {points: ['nw', 'ne', 'se', 'sw'].map(k => f(k).join(',')).join(' '),
-    fill: '#0d1528', stroke: '#2a3558', 'stroke-dasharray': '4 3'}));
-  svg.appendChild(el('text', {x: 150, y: 190, 'text-anchor': 'middle'})).textContent = 'floor';
-  ['nw', 'ne', 'se', 'sw'].forEach(k => svg.appendChild(el('text', {x: C[k][0], y: C[k][1] - 6, 'text-anchor': 'middle'})).textContent = k.toUpperCase());
+  // Paint order: the NW edge is the far corner of the box, so it goes behind
+  // everything (even the floor); labels go last so nothing covers them.
+  const back = svg.appendChild(el('g', {})), floor = svg.appendChild(el('g', {}));
+  const secs = svg.appendChild(el('g', {})), labels = svg.appendChild(el('g', {}));
+  floor.appendChild(el('polygon', {points: ['nw', 'ne', 'se', 'sw'].map(k => f(k).join(',')).join(' '),
+    fill: '#12151b', stroke: '#2c313b', 'stroke-dasharray': '4 3'}));
+  labels.appendChild(el('text', {x: 150, y: 190, 'text-anchor': 'middle'})).textContent = 'floor';
+  ['nw', 'ne', 'se', 'sw'].forEach(k => labels.appendChild(el('text', {x: C[k][0], y: C[k][1] - 6, 'text-anchor': 'middle'})).textContent = k.toUpperCase());
   if (!cfg) return;
   cfg.layout.sections.forEach(s => {
     const g = GEO[s.name];
@@ -309,9 +424,9 @@ function drawArena() {
       $('rows').appendChild(r); return;
     }
     const a = C[g[0]], b = g[2] ? f(g[1]) : C[g[1]];
-    const grp = svg.appendChild(el('g', {class: 'sec'}));
+    const grp = (s.name === 'edge_nw' ? back : secs).appendChild(el('g', {class: 'sec'}));
     grp.onclick = () => pickTarget(s.name);
-    grp.appendChild(el('line', {x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#2a3558', 'stroke-width': 9, 'stroke-linecap': 'round'}));
+    grp.appendChild(el('line', {x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#262b35', 'stroke-width': 9, 'stroke-linecap': 'round'}));
     const n = s.count, len = Math.hypot(b[0] - a[0], b[1] - a[1]), sz = Math.max(3, Math.min(9, len / n - 1.5));
     for (let i = 0; i < n; i++) {
       const t = (i + 0.5) / n, x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
@@ -329,7 +444,7 @@ function onFrame(d) {
     if (o.svg) o.svg.setAttribute('fill', c); else o.row.style.background = c;
   }
 }
-function pickTarget(name) { $('cTarget').value = name; toast('Custom target: ' + name); }
+function pickTarget(name) { $('cTarget').value = name; toast('Custom effect target (Setup): ' + name); }
 
 // ── Quick actions ────────────────────────────────────────────────────────
 const hasGroup = n => cfg && cfg.layout.groups.some(g => g.name === n);
@@ -402,6 +517,8 @@ function onStatus(m) {
     ['Supply', m.supplyV == null ? 'USB / not wired' : m.supplyV + ' V'], ['Clients', m.clients], ['Pixels', m.pixels],
     ['Token', m.auth ? 'required' : 'off']];
   $('sys').innerHTML = rows.map(r => `<span>${r[0]}</span><span>${esc(r[1])}</span>`).join('');
+  $('uState').textContent = {off: 'Off', waiting: 'Waiting for WiFi', connecting: 'Connecting…',
+                             connected: 'Connected'}[m.uplink] || '—';
 }
 const fmtUp = s => `${Math.floor(s / 3600)}h ${Math.floor(s / 60) % 60}m ${s % 60}s`;
 
@@ -415,9 +532,9 @@ function onConfig(m) {
   $('cTarget').innerHTML = opts.map(o => `<option>${esc(o)}</option>`).join('');
   if (opts.includes(keep)) $('cTarget').value = keep;
   $('pSec').innerHTML = m.layout.sections.map(s => `<option>${esc(s.name)}</option>`).join('');
-  $('cdBtn').textContent = `COUNTDOWN  ${m.settings.countdown.seconds}s`;
+  $('cdBtn').textContent = `COUNTDOWN · ${m.settings.countdown.seconds} s`;
   // setup model
-  secModel = m.layout.sections.map(s => ({id: uid++, name: s.name, count: s.count, out: s.out, rev: s.rev}));
+  secModel = m.layout.sections.map(s => ({id: uid++, name: s.name, count: s.count, rev: s.rev}));
   grpModel = m.layout.groups.map(g => ({name: g.name, members: new Set(g.sections.map(n => secModel.find(s => s.name === n)?.id))}));
   renderSetup();
   // settings
@@ -426,32 +543,37 @@ function onConfig(m) {
   $('sWpp').value = s.wattsPerPixel; $('sBuzz').checked = s.buzzer;
   $('sBoot').innerHTML = m.bootScenes.map(b => `<option>${esc(b)}</option>`).join(''); $('sBoot').value = s.bootScene;
   $('sCdSec').value = cd.seconds; $('sCdWarn').value = cd.warnAt; $('sCdGo').value = cd.goMs;
-  $('sCdHigh').value = cd.high; $('sCdWarnC').value = cd.warn; $('sCdGoC').value = cd.go;
-  $('sCdThenOn').checked = cd.then !== 'none'; if (cd.then !== 'none') $('sCdThen').value = cd.then;
+  const hex = (v, d) => /^#[0-9a-f]{6}$/i.test(v) ? v : d;   // a missing value must not turn an input black
+  $('sCdHigh').value = hex(cd.high, '#ff0000'); $('sCdWarnC').value = hex(cd.warn, '#ff6a00');
+  $('sCdGoC').value = hex(cd.go, '#00ff00');
+  $('sCdThenOn').checked = cd.then !== 'none'; $('sCdThen').value = hex(cd.then, '#00ff00');
   $('wSsid').value = m.wifi.ssid; const st = m.wifi.static;
   $('wStatic').checked = st.enabled; $('wStaticBox').classList.toggle('hide', !st.enabled);
   $('wIp').value = st.ip; $('wGw').value = st.gateway; $('wMask').value = st.mask; $('wDns').value = st.dns;
   $('dHost').value = m.device.hostname; $('dApSsid').value = m.device.apSsid;
+  if (m.uplink) {
+    $('uOn').checked = m.uplink.enabled; $('uUrl').value = m.uplink.url;
+    $('uKey').placeholder = m.uplink.keySet ? '(unchanged)' : '(not set)';
+  }
 }
 
 // ── Setup: sections & groups ─────────────────────────────────────────────
 function renderSetup() {
-  const tb = $('secBody'); tb.innerHTML = '';
+  const box = $('secBody'); box.innerHTML = '';
   secModel.forEach((s, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td><button data-a="up">▲</button><button data-a="dn">▼</button></td>
-      <td><input type="text" value="${esc(s.name)}" maxlength="15"></td>
-      <td style="white-space:nowrap"><button data-a="minus">−</button><input type="number" value="${s.count}" min="1" style="width:56px"><button data-a="plus">+</button></td>
-      <td><select><option value="0">A</option><option value="1">B</option></select></td>
-      <td><input type="checkbox" ${s.rev ? 'checked' : ''}></td><td><button data-a="del" class="danger">✕</button></td>`;
-    const [name, cnt] = tr.querySelectorAll('input[type=text],input[type=number]');
-    const sel = tr.querySelector('select'), rev = tr.querySelector('input[type=checkbox]');
-    sel.value = s.out;
+    const r = document.createElement('div'); r.className = 'sr';
+    r.innerHTML = `<span class="idx">${i + 1}</span>
+      <input type="text" class="name" value="${esc(s.name)}" maxlength="15" aria-label="Section name">
+      <div class="step"><button data-a="minus" aria-label="Fewer pixels">−</button><input type="number" value="${s.count}" min="1" aria-label="Pixels"><button data-a="plus" aria-label="More pixels">+</button></div>
+      <label class="sw"><input type="checkbox" ${s.rev ? 'checked' : ''}>Reversed</label>
+      <button data-a="up" title="Move up">▲</button><button data-a="dn" title="Move down">▼</button>
+      <button data-a="del" class="danger" title="Delete section">✕</button>`;
+    const name = r.querySelector('.name'), cnt = r.querySelector('input[type=number]');
+    const rev = r.querySelector('input[type=checkbox]');
     name.onchange = () => { s.name = name.value.trim().toLowerCase(); renderGroups(); };
     cnt.onchange = () => { s.count = Math.max(1, +cnt.value || 1); totals(); live(); };
-    sel.onchange = () => { s.out = +sel.value; live(); };
     rev.onchange = () => { s.rev = rev.checked; live(); };
-    tr.querySelectorAll('button').forEach(b => b.onclick = () => {
+    r.querySelectorAll('button').forEach(b => b.onclick = () => {
       const a = b.dataset.a;
       if (a === 'plus' || a === 'minus') { s.count = Math.max(1, s.count + (a === 'plus' ? 1 : -1)); cnt.value = s.count; totals(); live(); return; }
       if (a === 'up' && i > 0) [secModel[i - 1], secModel[i]] = [secModel[i], secModel[i - 1]];
@@ -459,19 +581,19 @@ function renderSetup() {
       if (a === 'del') { secModel.splice(i, 1); grpModel.forEach(g => g.members.delete(s.id)); }
       renderSetup(); live();
     });
-    tb.appendChild(tr);
+    box.appendChild(r);
   });
   totals(); renderGroups();
 }
 function totals() {
   const n = secModel.reduce((a, s) => a + s.count, 0), wpp = cfg ? cfg.settings.wattsPerPixel : 1.2;
-  $('secTotals').textContent = `${n} px · ${(n * 0.1).toFixed(1)} m · max ≈ ${Math.round(n * wpp)} W @ full white`;
+  $('secTotals').textContent = `${n} px · ${(n * 0.1).toFixed(1)} m · max ≈ ${Math.round(n * wpp)} W at full white`;
 }
 function renderGroups() {
   const box = $('grpList'); box.innerHTML = '';
   grpModel.forEach((g, gi) => {
-    const d = document.createElement('div'); d.className = 'row';
-    d.innerHTML = `<input type="text" value="${esc(g.name)}" maxlength="15" style="width:90px"><div class="chips"></div><button class="danger">✕</button>`;
+    const d = document.createElement('div'); d.className = 'grp';
+    d.innerHTML = `<input type="text" value="${esc(g.name)}" maxlength="15" aria-label="Group name"><div class="chips"></div><button class="danger" title="Delete group">✕</button>`;
     const chips = d.querySelector('.chips');
     secModel.forEach(s => {
       const c = document.createElement('button'); c.className = 'chip' + (g.members.has(s.id) ? ' on' : ''); c.textContent = s.name;
@@ -485,12 +607,12 @@ function renderGroups() {
 }
 function layoutPayload() {
   return {type: 'set_layout',
-    sections: secModel.map(s => ({name: s.name, count: s.count, out: s.out, rev: s.rev})),
+    sections: secModel.map(s => ({name: s.name, count: s.count, rev: s.rev})),
     groups: grpModel.map(g => ({name: g.name, sections: secModel.filter(s => g.members.has(s.id)).map(s => s.name)}))};
 }
 let liveT;
 function live() { if ($('liveApply').checked) { clearTimeout(liveT); liveT = setTimeout(() => send(layoutPayload()), 250); } }
-$('secAdd').onclick = () => { secModel.push({id: uid++, name: 'sec' + (secModel.length + 1), count: 6, out: 0, rev: false}); renderSetup(); };
+$('secAdd').onclick = () => { secModel.push({id: uid++, name: 'sec' + (secModel.length + 1), count: 6, rev: false}); renderSetup(); };
 $('grpAdd').onclick = () => { grpModel.push({name: 'group' + (grpModel.length + 1), members: new Set()}); renderGroups(); };
 $('layoutSave').onclick = () => { if (send(layoutPayload())) toast('Layout saved'); };
 $('layoutReset').onclick = () => confirm('Reset to the default 8-section layout?') && send({type: 'reset_layout'});
@@ -508,6 +630,11 @@ $('sSave').onclick = () => send({type: 'set_settings', settings: {
   countdown: {seconds: +$('sCdSec').value, warnAt: +$('sCdWarn').value, goMs: +$('sCdGo').value,
     high: $('sCdHigh').value, warn: $('sCdWarnC').value, go: $('sCdGoC').value,
     then: $('sCdThenOn').checked ? $('sCdThen').value : 'none'}}}) && toast('Settings saved');
+$('uSave').onclick = () => {
+  const o = {type: 'set_uplink', enabled: $('uOn').checked, url: $('uUrl').value.trim()};
+  if ($('uKey').value) o.key = $('uKey').value;
+  if (send(o)) { $('uKey').value = ''; toast('Match server settings saved'); }
+};
 $('wStatic').onchange = e => $('wStaticBox').classList.toggle('hide', !e.target.checked);
 $('wScan').onclick = () => { send({type: 'wifi_scan'}); toast('Scanning…'); };
 function onScan(m) {

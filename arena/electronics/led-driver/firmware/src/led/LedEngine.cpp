@@ -110,6 +110,12 @@ void LedEngine::cancel(SectionMask mask) {
     trim(mask);
 }
 
+bool LedEngine::animating() const {
+    for (uint8_t i = 0; i < _count; i++)
+        if (_fx[i].type != Fx::Identify || _fx[i].durationMs) return true;
+    return false;
+}
+
 // ── Rendering ────────────────────────────────────────────────────────────────
 
 void LedEngine::render(uint32_t now) {
@@ -203,7 +209,9 @@ bool LedEngine::renderEffect(Effect& e, uint32_t now) {
                     px[i] = (color::hash32(p * 7919u + slot * 104729u) & 7) == 0 ? e.c1 : e.c2;
                     break;
                 case Fx::Identify:
-                    px[i] = i == 0 ? color::WHITE : color::scale(color::wheel(s * 256 / nsec), 180);
+                    // Full-strength hue: after brightness + gamma a dimmed one
+                    // all but disappears next to the white marker.
+                    px[i] = i == 0 ? color::WHITE : color::wheel(s * 256 / nsec);
                     break;
                 default:
                     break;

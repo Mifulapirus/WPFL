@@ -24,7 +24,7 @@ with the [arena LED driver](../../led-driver/).
 | Flash | 4 MB |
 | Radio | 2.4 GHz WiFi 802.11 b/g/n + BLE 5 |
 | USB | Native USB-Serial/JTAG on the USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`), 115200 baud log |
-| Peripherals used | RMT ×2 TX channels, LEDC (PWM), ADC1 |
+| Peripherals used | SPI2 + GDMA (LED data), LEDC (PWM), ADC1 |
 
 ## GPIO / connector map
 
@@ -32,7 +32,7 @@ with the [arena LED driver](../../led-driver/).
 |---|---|---|---|
 | GPIO0 | — (on-board divider) | Battery voltage sense (ADC) | Supply voltage monitor |
 | GPIO1 | **J5** | Left wheel ESC signal | **LED data output A** |
-| GPIO3 | **J6** | Right wheel ESC signal | **LED data output B** (optional) |
+| GPIO3 | **J6** | Right wheel ESC signal | spare |
 | GPIO4 | **J7** | Weapon ESC signal | spare |
 | GPIO5 | **J8** | Safety kill-switch (short to GND) | **START** button (to GND) |
 | GPIO6 | **J9** | Expansion | **STOP** button (to GND) |
@@ -79,5 +79,5 @@ with `ledcWriteTone()`. If JP1 is open, GPIO7 is free.
 
 ## Using the board for something else in the arena
 
-Free resources once it is an LED driver: **J7 (GPIO4)**, BLE radio, and one RMT channel if output B is unused.
+Free resources once it is an LED driver: **J6 (GPIO3)**, **J7 (GPIO4)**, BLE radio, both RMT channels.
 Candidates: a second arena (pit) light chain, a buzzer/horn relay, driver-station ready buttons.

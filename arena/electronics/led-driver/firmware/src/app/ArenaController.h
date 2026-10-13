@@ -32,6 +32,7 @@
 #include "led/LedOutput.h"
 #include "connectivity/WiFiManager.h"
 #include "connectivity/WebServerManager.h"
+#include "connectivity/Uplink.h"
 #include "hardware/BuzzerController.h"
 #include "hardware/SupplyMonitor.h"
 
@@ -55,7 +56,7 @@ struct LedSettings {
 class ArenaController {
 public:
     ArenaController(ArenaLayout& layout, LedEngine& engine, LedOutput& output,
-                    WiFiManager& wifi, WebServerManager& web,
+                    WiFiManager& wifi, WebServerManager& web, Uplink& uplink,
                     BuzzerController& buzzer, SupplyMonitor& supply);
 
     // Load settings, configure outputs, apply the boot scene, hook up the web layer.
@@ -91,6 +92,7 @@ private:
     LedOutput&        _output;
     WiFiManager&      _wifi;
     WebServerManager& _web;
+    Uplink&           _uplink;
     BuzzerController& _buzzer;
     SupplyMonitor&    _supply;
 
@@ -119,6 +121,12 @@ private:
     volatile uint8_t _clientCount = 0;
     uint8_t  _preview[3 + 3 * LED_MAX_PIXELS];
     uint8_t  _scratch[3 * LED_MAX_PIXELS];
+
+    // The match-server uplink is one more (always authenticated) session.
+    static constexpr uint32_t UPLINK_ID = 0xFFFFFFFFu;
+    // set_uplink arrives on a network task; the NVS write happens in loop().
+    bool   _uplinkSave = false, _upOn = false, _upKeepKey = true;
+    String _upUrl, _upKey;
 
     // ── Locking ──────────────────────────────────────────────────────────────
     void lock()   { xSemaphoreTake(_mtx, portMAX_DELAY); }

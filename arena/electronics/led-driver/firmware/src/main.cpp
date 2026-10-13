@@ -44,6 +44,7 @@
 #include "hardware/Button.h"
 #include "connectivity/WiFiManager.h"
 #include "connectivity/WebServerManager.h"
+#include "connectivity/Uplink.h"
 #include "app/ArenaController.h"
 
 // ── Module instances (static allocation — keeps the heap for WiFi/TCP) ───────
@@ -54,7 +55,8 @@ BuzzerController buzzer;
 SupplyMonitor    supply;
 WiFiManager      wifi;
 WebServerManager webServer;
-ArenaController  controller(layout, engine, output, wifi, webServer, buzzer, supply);
+Uplink           uplink;
+ArenaController  controller(layout, engine, output, wifi, webServer, uplink, buzzer, supply);
 
 Button bootButton;
 #ifdef HAS_EXT_BUTTONS
@@ -90,6 +92,7 @@ void setup() {
 #endif
 
     // ── LEDs first, so the arena lights up even while WiFi is connecting ─────
+    uplink.begin();
     controller.begin();
     controller.update(millis());
 

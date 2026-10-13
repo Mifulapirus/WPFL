@@ -35,10 +35,12 @@ static bool colorArg(JsonVariantConst v, RGB& out, const RGB& def) {
     return color::parse(v.as<const char*>(), out);
 }
 
-static void hexInto(JsonVariant dst, const RGB& c) {
+// Takes the object + key, not obj[key]: converting a missing member to a
+// JsonVariant yields an unbound variant and set() would silently do nothing.
+static void hexInto(JsonObject o, const char* key, const RGB& c) {
     char buf[8];
     color::toHex(c, buf);
-    dst.set((const char*)buf);   // const char* → copied into the document
+    o[key] = (const char*)buf;   // const char* → copied into the document
 }
 
 static uint16_t defaultPeriod(Fx fx) {
@@ -55,10 +57,10 @@ static uint16_t defaultPeriod(Fx fx) {
 // ── Construction / setup ─────────────────────────────────────────────────────
 
 ArenaController::ArenaController(ArenaLayout& layout, LedEngine& engine, LedOutput& output,
-                                 WiFiManager& wifi, WebServerManager& web,
+                                 WiFiManager& wifi, WebServerManager& web, Uplink& uplink,
                                  BuzzerController& buzzer, SupplyMonitor& supply)
     : _layout(layout), _engine(engine), _output(output), _wifi(wifi), _web(web),
-      _buzzer(buzzer), _supply(supply) {}
+      _uplink(uplink), _buzzer(buzzer), _supply(supply) {}
 
 void ArenaController::begin() {
     _mtx = xSemaphoreCreateMutex();
@@ -85,6 +87,8 @@ void ArenaController::begin() {
     _web.onHttpCmd([this](const char* b, size_t n, const String& t, String& r) { onHttpCmd(b, n, t, r); });
     _web.onTokenCheck([this](const String& t) { return tokenOk(t); });
     _web.onOtaDone([this](bool ok) { if (ok) _rebootAt = millis() + 500; });
+    _uplink.onConnection([this](bool c) { onConnection(UPLINK_ID, c); });
+    _uplink.onText([this](const char* d, size_t n) { onText(UPLINK_ID, d, n); });
 
     logHeap("controller ready");
 }
@@ -156,10 +160,10 @@ void ArenaController::settingsToJson(JsonObject o) const {
     cd["seconds"] = _settings.cdMs / 1000.0;
     cd["warnAt"]  = _settings.cdWarnMs / 1000.0;
     cd["goMs"]    = _settings.cdGoMs;
-    hexInto(cd["high"], _settings.cdHigh);
-    hexInto(cd["warn"], _settings.cdWarn);
-    hexInto(cd["go"],   _settings.cdGo);
-    if (_settings.cdHasThen) hexInto(cd["then"], _settings.cdThen);
+    hexInto(cd, "high", _settings.cdHigh);
+    hexInto(cd, "warn", _settings.cdWarn);
+    hexInto(cd, "go",   _settings.cdGo);
+    if (_settings.cdHasThen) hexInto(cd, "then", _settings.cdThen);
     else cd["then"] = "none";
 }
 
@@ -307,7 +311,7 @@ void ArenaController::onConnection(uint32_t id, bool connected) {
         if (s) {
             *s = Session();
             s->id     = id;
-            s->authed = _wifi.token().isEmpty();
+            s->authed = id == UPLINK_ID || _wifi.token().isEmpty();   // the server proved itself with its key
             s->hello  = true;
         }
     } else {
@@ -404,7 +408,7 @@ void ArenaController::handle(JsonObjectConst cmd, Ctx& ctx, JsonDocument& reply)
     } else if (!strcmp(type, "subscribe")) {
         if (!ctx.session) { err = "subscribe needs a WebSocket"; }
         else {
-            ctx.session->frames  = cmd["frames"] | false;
+            ctx.session->frames  = (cmd["frames"] | false) && ctx.session->id != UPLINK_ID;
             int fps = constrain((int)(cmd["fps"] | 10), 1, FRAMES_MAX_FPS);
             ctx.session->frameMs = 1000 / fps;
         }
@@ -647,6 +651,19 @@ bool ArenaController::handleConfig(const char* type, JsonObjectConst cmd, Ctx& c
         return true;
     }
 
+    if (!strcmp(type, "set_uplink")) {
+        const bool   on      = cmd["enabled"] | false;
+        const String url     = cmd["url"] | "";
+        const bool   keepKey = cmd["key"].isNull();
+        const String key     = cmd["key"] | "";
+        if ((on || !url.isEmpty()) && !Uplink::validUrl(url)) { err = "URL must start with wss:// (or ws:// for LAN tests)"; return true; }
+        if (key.length() > 64) { err = "key max 64 chars"; return true; }
+        if (on && (keepKey ? !_uplink.keySet() : key.isEmpty())) { err = "key required"; return true; }
+        _upOn = on; _upUrl = url; _upKeepKey = keepKey; _upKey = key;
+        _uplinkSave = true;
+        return true;
+    }
+
     if (!strcmp(type, "set_token")) {
         String token = cmd["token"] | "";
         if (token.length() > 32) { err = "token max 32 chars"; return true; }
@@ -707,6 +724,7 @@ void ArenaController::buildStatus(JsonDocument& doc) {
     else                   doc["supplyV"] = nullptr;
     doc["pixels"]  = _layout.total();
     doc["auth"]    = !_wifi.token().isEmpty();
+    doc["uplink"]  = _uplink.stateName();
 }
 
 void ArenaController::buildConfig(JsonDocument& doc) {
@@ -719,6 +737,10 @@ void ArenaController::buildConfig(JsonDocument& doc) {
     d["hostname"] = _wifi.hostname();
     d["apSsid"]   = _wifi.apSsid();
     d["tokenSet"] = !_wifi.token().isEmpty();
+    JsonObject up = doc["uplink"].to<JsonObject>();
+    up["enabled"] = _uplink.enabled();
+    up["url"]     = _uplink.url();
+    up["keySet"]  = _uplink.keySet();
     JsonObject w = doc["wifi"].to<JsonObject>();
     w["ssid"] = _wifi.staSsid();
     const StaticIpConfig& st = _wifi.staticIp();
@@ -732,7 +754,6 @@ void ArenaController::buildConfig(JsonDocument& doc) {
     l["maxPixels"]   = LED_MAX_PIXELS;
     l["maxSections"] = LED_MAX_SECTIONS;
     l["maxGroups"]   = LED_MAX_GROUPS;
-    l["outputs"]     = LED_NUM_OUTPUTS;
     l["maxEffects"]  = LED_MAX_EFFECTS;
     JsonArray bs = doc["bootScenes"].to<JsonArray>();
     for (const char* b : BOOT_SCENES) bs.add(b);
@@ -741,13 +762,15 @@ void ArenaController::buildConfig(JsonDocument& doc) {
 void ArenaController::sendDoc(uint32_t id, JsonDocument& doc) {
     String s;
     serializeJson(doc, s);
-    _web.sendText(id, s.c_str(), s.length());
+    if (id == UPLINK_ID) _uplink.send(s.c_str(), s.length());
+    else                 _web.sendText(id, s.c_str(), s.length());
 }
 
 void ArenaController::broadcastDoc(JsonDocument& doc) {
     String s;
     serializeJson(doc, s);
     _web.broadcastText(s.c_str(), s.length());
+    _uplink.send(s.c_str(), s.length());   // no-op when the uplink is down
 }
 
 void ArenaController::logHeap(const char* tag) {
@@ -859,6 +882,19 @@ void ArenaController::update(uint32_t now) {
     // ── Supply voltage ───────────────────────────────────────────────────────
     if (now - _lastSupply >= SUPPLY_READ_MS) { _supply.update(); _lastSupply = now; }
 
+    // ── Match-server uplink: settings + start/stop with WiFi ─────────────────
+    if (_uplinkSave) {
+        lock();
+        _uplinkSave = false;
+        String url = _upUrl, key = _upKey;
+        bool on = _upOn, keep = _upKeepKey;
+        unlock();
+        const char* e = nullptr;
+        if (!_uplink.save(url, key, keep, on, e)) Serial.printf("[Uplink] Save failed: %s\n", e);
+        _configChanged = true;
+    }
+    _uplink.update(_wifi.staConnected());
+
     // ── Deferred NVS writes ──────────────────────────────────────────────────
     if ((_saveSettings || _saveLayout) && (int32_t)(now - _saveAt) >= 0) {
         lock();
@@ -884,6 +920,7 @@ void ArenaController::update(uint32_t now) {
         unlock();
         if (_factoryReset) {
             _wifi.factoryReset();
+            _uplink.factoryReset();
             Preferences p; p.begin(NVS_NS, false); p.clear(); p.end();
         } else if (_forgetWifi) {
             _wifi.clearNetwork();

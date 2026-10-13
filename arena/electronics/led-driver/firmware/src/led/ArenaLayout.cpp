@@ -12,7 +12,7 @@ static const char*    NVS_KEY       = "layout";
 static const uint16_t LAYOUT_MAGIC  = 0xA7E1;   // bump if LayoutCfg changes shape
 
 // ── Default layout ────────────────────────────────────────────────────────────
-// Chain order (one data line, output A), starting at the NW top corner:
+// Chain order (one data line), starting at the NW top corner:
 //   ceil_n (NW→NE) → edge_ne (top→bottom) → [data return wire up the NE edge]
 //   → ceil_e (NE→SE) → edge_se → ceil_s (SE→SW) → edge_sw → ceil_w (SW→NW) → edge_nw
 // See docs/wiring.md. Red robot side = west half, blue = east half.
@@ -68,13 +68,13 @@ void ArenaLayout::begin() {
     }
     if (ok) {
         _cfg = loaded;
+        for (uint8_t i = 0; i < _cfg.numSections; i++) _cfg.sections[i].reserved = 0;  // old output B
         recompute();
     } else {
         setDefaults();
     }
-    Serial.printf("[Layout] %u sections, %u groups, %u pixels (A=%u, B=%u)\n",
-                  _cfg.numSections, _cfg.numGroups, _total, _outCount[0],
-                  LED_NUM_OUTPUTS > 1 ? _outCount[1] : 0);
+    Serial.printf("[Layout] %u sections, %u groups, %u pixels\n",
+                  _cfg.numSections, _cfg.numGroups, _total);
 }
 
 bool ArenaLayout::save() const {
@@ -88,13 +88,9 @@ bool ArenaLayout::save() const {
 
 void ArenaLayout::recompute() {
     _total = 0;
-    for (uint8_t o = 0; o < LED_NUM_OUTPUTS; o++) _outCount[o] = 0;
     for (uint8_t i = 0; i < _cfg.numSections; i++) {
-        const SectionCfg& s = _cfg.sections[i];
-        _start[i]  = _total;
-        _total    += s.count;
-        _outPos[i] = _outCount[s.output];
-        _outCount[s.output] += s.count;
+        _start[i] = _total;
+        _total   += _cfg.sections[i].count;
     }
 }
 
@@ -189,7 +185,6 @@ bool ArenaLayout::validate(const LayoutCfg& c, const char*& err) {
         const SectionCfg& s = c.sections[i];
         if (!memchr(s.name, 0, LED_NAME_LEN) || !validName(s.name)) { err = "invalid section name"; return false; }
         if (s.count == 0) { err = "section count must be >= 1"; return false; }
-        if (s.output >= LED_NUM_OUTPUTS) { err = "invalid output"; return false; }
         total += s.count;
         for (uint8_t j = 0; j < i; j++)
             if (strcasecmp(c.sections[j].name, s.name) == 0) { err = "duplicate section name"; return false; }
@@ -224,7 +219,6 @@ bool ArenaLayout::fromJson(JsonObjectConst in, const char*& err) {
         int count = s["count"] | 0;
         if (count < 1 || count > LED_MAX_PIXELS) { err = "invalid section count"; return false; }
         d.count    = (uint16_t)count;
-        d.output   = (uint8_t)(s["out"] | 0);
         d.reversed = (s["rev"] | false) ? 1 : 0;
     }
 
@@ -260,7 +254,6 @@ void ArenaLayout::toJson(JsonObject out) const {
         JsonObject o = secs.add<JsonObject>();
         o["name"]  = (const char*)s.name;  // cast: char[] would be treated as a literal
         o["count"] = s.count;
-        o["out"]   = s.output;
         o["rev"]   = (bool)s.reversed;
         o["start"] = _start[i];
     }

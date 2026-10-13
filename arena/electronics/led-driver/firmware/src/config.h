@@ -34,8 +34,8 @@
 //   Rotato label         Arena LED driver use
 //   ─────────────────    ─────────────────────────────────────────────
 //   GPIO0  batt sense    Supply voltage monitor (R1=39K / R2=10K divider)
-//   GPIO1  J5 left ESC   LED DATA output A  (primary chain)
-//   GPIO3  J6 right ESC  LED DATA output B  (optional second chain)
+//   GPIO1  J5 left ESC   LED DATA output (single chain, SPI MOSI via GPIO matrix)
+//   GPIO3  J6 right ESC  unused / spare
 //   GPIO4  J7 weapon ESC unused / spare
 //   GPIO5  J8 safety sw  External START button (to GND)
 //   GPIO6  J9 expansion  External STOP button  (to GND)
@@ -43,8 +43,8 @@
 //   GPIO9  BOOT button   short = countdown, hold 3 s = reset WiFi settings
 //
 #define PIN_SUPPLY_ADC     0
-#define PIN_LED_DATA_A     1
-#define PIN_LED_DATA_B     3
+#define PIN_LED_DATA       1
+#define PIN_SPARE_J6       3
 #define PIN_SPARE_J7       4
 #define PIN_BTN_START      5
 #define PIN_BTN_STOP       6
@@ -54,7 +54,8 @@
 // ── LED Strip ─────────────────────────────────────────────────────────────────
 //
 // Target strip: PAUTIX RGB Smart-IC COB, 24 V, 12 W/m, 630 LEDs/m.
-//   IC: WS2811 · 1 pixel per 10 cm (63 LEDs share one IC) · color order GRB.
+//   IC: WS2811 · 1 pixel per 10 cm (63 LEDs share one IC).
+//   The listing says GRB, but the strips we received are RGB.
 //   So "one LED" from the controller's point of view = one 10 cm segment.
 //
 // Default arena layout (box 4 ft × 4 ft × 2 ft):
@@ -64,14 +65,13 @@
 //
 // The real counts are set at runtime (web UI → Setup) once the strip is cut.
 //
-#define LED_NUM_OUTPUTS          2      // RMT channels on the ESP32-C3 (A, B)
 #define LED_MAX_PIXELS         600      // Hard cap across all sections (static buffers)
 #define LED_MAX_SECTIONS        16
 #define LED_MAX_GROUPS           8
 #define LED_NAME_LEN            16      // incl. NUL → names up to 15 chars
 #define LED_MAX_EFFECTS          8      // concurrent effect slots
 
-// Extra pixels always written black after the end of each chain. While you
+// Extra pixels always written black after the end of the chain. While you
 // are dialing in the counts, any pixel past the configured end stays OFF
 // instead of holding a stale color.
 #define LED_TAIL_BLANK_PIXELS    8
@@ -83,10 +83,17 @@
 #define LED_IDLE_REFRESH_MS        200    // re-send static frames (glitch recovery)
 
 #define LED_DEFAULT_BRIGHTNESS     200    // 0–255
-#define LED_DEFAULT_COLOR_ORDER    "GRB"  // PAUTIX listing: "G.R.B (NOT R.G.B)"
+#define LED_DEFAULT_COLOR_ORDER    "RGB"  // listing claims GRB; real strips are RGB
 #define LED_DEFAULT_GAMMA          true
 #define LED_DEFAULT_WATTS_PER_PX   1.2f   // 12 W/m ÷ 10 px/m, all channels at 255
 #define LED_DEFAULT_MAX_WATTS      100    // estimated-power ceiling (size to your PSU)
+
+// WS2811 output: SPI2 + DMA. Each WS2811 bit becomes 4 SPI bits at 3.2 MHz
+// (1.25 µs/bit): 0 → 1000 (312 ns high), 1 → 1110 (937 ns high). The whole
+// frame is encoded up front and clocked out by DMA, so WiFi interrupts or
+// flash writes cannot stretch or repeat bits (the RMT driver could, on the C3).
+#define LED_SPI_HZ            3200000
+#define LED_RESET_US              300    // line held low before each frame (latch)
 
 // ── Countdown defaults (all editable in the UI) ──────────────────────────────
 //   remaining > warnAt  → HIGH color (red)

@@ -14,13 +14,15 @@ low-latency **WebSocket API** so the match tracker on Capek can run the lights a
 ## Features
 
 - **Per-pixel control** (1 pixel = one 10 cm WS2811 segment), **sections** and **groups**, all sized at runtime —
-  cut the strip, then dial in the counts from your phone. Up to 16 sections / 600 pixels / 2 data outputs.
+  cut the strip, then dial in the counts from your phone. Up to 16 sections / 600 pixels on one data line.
 - **Competition buttons:** STOP (red), PAUSE (yellow), FIGHT (green), **COUNTDOWN** (red → orange → flashing green
   GO → green), 10 s incapacitation count, robot **Fault** and **Wins** per side, work light, rainbow.
 - **Effects:** blink, breathe, rainbow, chase, sparkle, progress bar, identify — on any target, optionally as
   timed overlays that fall back to what was showing.
 - **Live preview** of the arena in the web page (mirrors the real LEDs).
 - **WebSocket API** for the match server; also HTTP `POST /api/cmd`. Optional control token.
+- **Match-server uplink:** the driver dials out to the [match tracker](../../../software/match-tracker/) over `wss://`
+  (Settings → Match server), so it works from any network with internet.
 - **WiFi:** joins the venue network (DHCP or static IP), falls back to its own hotspot, mDNS
   `http://wpfl-arena.local`, WiFi power-save off for latency.
 - **Physical START/STOP buttons** (J8/J9) and BOOT-button countdown — work with no WiFi at all.
@@ -37,13 +39,15 @@ pio device monitor         # 115200 baud: boot log, IP, heap
 ```
 
 1. Join WiFi **`WPFL-Arena-XXXX`**, password **`wpflarena`** → open **<http://192.168.4.1>**.
-2. **Control → STOP.** Arena should go red. If it goes green, Settings → *Color order* → `RGB`.
+2. **Control → STOP.** Arena should go red. If it goes green, Settings → *Color order* → try `GRB`.
 3. **Setup → Identify sections.** Each section shows its own color, first pixel white. Use **− / +** next to each
    section until each block ends exactly at its corner ("Apply count changes instantly" is on). Tick **Rev** for
    pieces mounted backwards. **Save layout**.
 4. **Settings → Network:** scan, pick the venue/Capek network, *Save & reboot*. Find it again at
    `http://wpfl-arena.local` or the IP on the serial log. If it can't join, the hotspot comes back.
 5. Optional: Settings → Device → **Control token** so spectators on the same WiFi can't touch the lights.
+6. Match tracker: Settings → **Match server** → URL `wss://wpfl-asmbly.thehomelab.dev/led`, key = the server's
+   `LED_KEY`, Connect on. Status shows *Connected* once the server accepts it.
 
 Later updates: build, then Settings → System → *Update firmware* with `firmware/bin/wpfl-arena-led-<ver>.bin`.
 
@@ -90,9 +94,9 @@ firmware/
     ├── app/ArenaController   protocol, sessions, settings, mutex, deferred saves/reboots
     ├── led/ArenaLayout       sections, groups, targets, logical→physical map (NVS)
     ├── led/LedEngine         base buffer + effect slots + countdown
-    ├── led/LedOutput         RMT output (NeoPixelBus), color order, gamma, power limit
+    ├── led/LedOutput         SPI + DMA output, color order, gamma, power limit
     ├── led/Color             RGB helpers
-    ├── connectivity/         WiFiManager (STA/AP/mDNS), WebServerManager (HTTP/WS/OTA)
+    ├── connectivity/         WiFiManager (STA/AP/mDNS), WebServerManager (HTTP/WS/OTA), Uplink (wss:// to the match server)
     └── hardware/             BuzzerController, SupplyMonitor (from Rotato), Button
 ```
 
@@ -107,11 +111,12 @@ link time) so it can't fragment the heap; the heap is left for WiFi, TCP and Web
 | Preview frame + hex scratch | 3.6 KB | static |
 | WebSocket reassembly buffer | 3 KB | static |
 | Layout + 8 effect slots + sessions | ~1 KB | static |
-| NeoPixelBus double buffer | 2 × 3 B × (pixels + 8) → **480 B** for 72 px | heap, once |
+| SPI DMA buffer (600 px max) | 12 B × (600 + 8) + 120 B reset → **7.4 KB** | static |
 | JSON documents | 1–4 KB, freed after each message | heap, transient |
 | Per WebSocket client | a few KB + send queue (capped at 16 messages) | heap |
 
-Build report: **RAM 52 KB static (16 %)**, flash 929 KB (47 % of one OTA slot), UI 10.6 KB gzipped.
+Build report: **RAM 65 KB static (20 %)**, flash 1.10 MB (56 % of one OTA slot — TLS for the uplink), UI 12.6 KB gzipped.
+The uplink's TLS session takes ~30–40 KB of heap while connected.
 
 Guards: max 6 sockets; new sockets refused when the largest free block < 24 KB; preview frames paused when free
 heap < 30 KB; slow clients get messages dropped instead of queued; messages > 3 KB rejected; a serial warning
@@ -122,8 +127,8 @@ number that tells you how close it came.
 
 | Symptom | Check |
 |---|---|
-| Colors swapped (red shows green) | Settings → Color order (`GRB` per listing, try `RGB`) |
-| Random flicker / wrong pixels | Level shifter, common GND, short data lead, 330 Ω resistor |
+| Colors swapped (red shows green) | Settings → Color order (our strips are `RGB` despite the listing; try `GRB`) |
+| Random flicker / wrong pixels | Firmware ≥ 0.2 (SPI output — older RMT builds glitched under WiFi load). Then: level shifter, common GND, short data lead, 330 Ω resistor |
 | First pixel OK, rest dead | DIN/DO direction — arrows on the strip must point away from the controller |
 | Last pixels of a run stay dark | Count too low for that section (Setup) |
 | Pixels after the end stay lit | Count too high; the driver blanks 8 pixels past each chain's end |

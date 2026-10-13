@@ -15,6 +15,7 @@ it: the built-in web UI, the match tracker on Capek, or the reference client
 | | |
 |---|---|
 | WebSocket | `ws://wpfl-arena.local/ws` (mDNS), `ws://<ip>/ws`, or `ws://192.168.4.1/ws` in hotspot mode |
+| Uplink | Or the driver dials **out** to a server you run — see [§8](#8-uplink-the-driver-connects-to-a-server) |
 | Max clients | 6. Extra sockets, or sockets opened while heap is low, are closed with code **1013** (try again later) |
 | Max message | 3072 bytes |
 | Keep-alive | The driver pings every 10 s; standard clients answer automatically |
@@ -114,7 +115,7 @@ green. "Red" lasts while remaining time > `warnAt`; "orange" from `warnAt` down 
 
 | type | fields | notes |
 |---|---|---|
-| `set_layout` | `sections:[{name,count,out?,rev?}]`, `groups?:[{name,sections:[names]}]` | Applied immediately (identify pattern shown), saved after 1.5 s. Names: `a-z 0-9 _ -`, ≤ 15 chars. `out`: 0 = A (J5), 1 = B (J6). |
+| `set_layout` | `sections:[{name,count,rev?}]`, `groups?:[{name,sections:[names]}]` | Applied immediately (identify pattern shown), saved after 1.5 s. Names: `a-z 0-9 _ -`, ≤ 15 chars. One data output: list order = chain order. A legacy `out` field is ignored. |
 | `reset_layout` | — | Back to the default 8-section layout. |
 | `set_settings` | `settings:{…}` (any subset, see `config.settings`) | Saved after 1.5 s. |
 | `wifi_scan` | — | Reply arrives as `{"type":"wifi_scan","networks":[{ssid,rssi,secure}]}`. |
@@ -122,6 +123,7 @@ green. "Red" lasts while remaining time > `warnAt`; "orange" from `warnAt` down 
 | `forget_wifi` | — | **Reboots** into hotspot mode. |
 | `set_device` | `hostname`, `apSsid?`, `apPass?` (omit/empty = keep) | **Reboots.** |
 | `set_token` | `token` (empty = disable) | Other sockets must re-auth. |
+| `set_uplink` | `enabled`, `url` (`wss://…` or `ws://…`), `key?` (omit = keep) | Saved to NVS, link restarts. See §8. |
 | `reboot` / `factory_reset` | — | `factory_reset` wipes WiFi, device, layout and LED settings. |
 
 ### Binary input — stream pixels
@@ -158,24 +160,26 @@ per message (~1000 pixels).
 {"type":"status","fw":"0.1.0.12","proto":1,"uptime":5321,
  "heap":{"free":183000,"min":171000,"maxBlock":110580,"total":327680},
  "wifi":{"mode":"sta","ip":"192.168.1.50","ssid":"Asmbly","rssi":-58,"host":"wpfl-arena","apSsid":"WPFL-Arena-A3F2"},
- "clients":2,"fps":60,"watts":41.3,"limited":false,"supplyV":null,"pixels":72,"auth":false}
+ "clients":2,"fps":60,"watts":41.3,"limited":false,"supplyV":null,"pixels":72,"auth":false,"uplink":"connected"}
 ```
 
 `watts` is an estimate after brightness/gamma/limit. `supplyV` is `null` when nothing is wired to the battery input.
 `wifi.mode`: `sta`, `ap`, or `ap+sta` (fallback hotspot up while retrying the network).
+`uplink`: `off`, `waiting` (no WiFi network yet), `connecting`, `connected`.
 
 ### `config`
 
 ```json
 {"type":"config","fw":"0.1.0.12","proto":1,
- "layout":{"sections":[{"name":"ceil_n","count":12,"out":0,"rev":false,"start":0}, …],
+ "layout":{"sections":[{"name":"ceil_n","count":12,"rev":false,"start":0}, …],
            "groups":[{"name":"ceiling","sections":["ceil_n","ceil_e","ceil_s","ceil_w"]}, …],"total":72},
- "settings":{"brightness":200,"colorOrder":"GRB","gamma":true,"maxWatts":100,"wattsPerPixel":1.2,
+ "settings":{"brightness":200,"colorOrder":"RGB","gamma":true,"maxWatts":100,"wattsPerPixel":1.2,
              "bootScene":"rainbow","buzzer":true,
              "countdown":{"seconds":3,"warnAt":2,"goMs":2000,"high":"#ff0000","warn":"#ff6a00","go":"#00ff00","then":"#00ff00"}},
  "device":{"hostname":"wpfl-arena","apSsid":"WPFL-Arena-A3F2","tokenSet":false},
+ "uplink":{"enabled":true,"url":"wss://wpfl-asmbly.thehomelab.dev/led","keySet":true},
  "wifi":{"ssid":"Asmbly","static":{"enabled":false,"ip":"","gateway":"","mask":"255.255.255.0","dns":""}},
- "limits":{"maxPixels":600,"maxSections":16,"maxGroups":8,"outputs":2,"maxEffects":8},
+ "limits":{"maxPixels":600,"maxSections":16,"maxGroups":8,"maxEffects":8},
  "bootScenes":["off","white","rainbow","red","yellow","green","blue"]}
 ```
 
@@ -227,3 +231,28 @@ curl -X POST http://wpfl-arena.local/api/cmd -d '{"type":"countdown","seconds":5
    sets it on its side and disables WiFi power-save.
 5. After a reconnect, re-send the current scene — only the boot scene survives a reboot.
 6. Measure: `python arena_led_client.py ping --count 200`.
+
+---
+
+## 8. Uplink: the driver connects to a server
+
+For a server that is **not on the venue network** (the match tracker on Capek-Web), the driver opens the
+connection itself, so NAT and firewalls at the venue don't matter.
+
+| | |
+|---|---|
+| Configure | Driver page → Settings → Match server, or `{"type":"set_uplink","enabled":true,"url":"wss://host/led","key":"…"}` |
+| Handshake | `GET <url>` WebSocket upgrade with `Authorization: Bearer <key>` and `User-Agent: wpfl-arena-led` |
+| TLS | `wss://` is verified against the Let's Encrypt roots in `src/connectivity/RootCerts.h` (dates not checked — no NTP). `ws://` for LAN tests |
+| Session | Exactly like a `/ws` client that is already authenticated: same commands, same replies, same `config`/`state`/`status` pushes. No preview frames |
+| Keep-alive | WebSocket ping every 10 s, link dropped after 25 s without pong; reconnects every ~10 s while enabled and WiFi (STA) is up |
+
+Server rules:
+
+- **Wait for the driver's first message** (`config`, sent right after connecting) before sending anything. The driver's
+  ESP-IDF 4.4 client can drop a message that arrives in the same TCP segment as the handshake reply.
+- On every (re)connect, send the scene for the current match state.
+- Accept one driver at a time; a new connection replaces the old one.
+- Keep messages ≤ 3072 bytes and unfragmented.
+
+Reference server: [`software/match-tracker/src/led.js`](../../software/match-tracker/src/led.js).

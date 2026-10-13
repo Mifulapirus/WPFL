@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | IC | **WS2811**, one IC per **10 cm** → **10 pixels/m** (63 LEDs share each IC) |
-| Color order | **GRB** ("G.R.B, NOT R.G.B") — firmware default |
+| Color order | Listing says **GRB** ("G.R.B, NOT R.G.B") — our strips are actually **RGB** (firmware default) |
 | Power | 24 V, 12 W/m → **1.2 W per pixel** at full white (≈ 50 mA @ 24 V) |
 | Wires | 3: **+24 V**, **DATA** (DIN → DO, one direction only), **GND** |
 | Width / cut | 12 mm, cut only at the marked 10 cm points |
@@ -51,8 +51,7 @@ the controller sits at the **NW top corner** and this order:
 That keeps every jumper short, along a corner post, and out of the robots' reach. Ceiling pieces run clockwise seen from above; edges run top → bottom. If you mount any piece the
 other way round, tick **rev** for it in Setup — no rewiring needed.
 
-Prefer two chains? Put the ceiling ring on **output A (J5)** and the four edges on **output B (J6)** and set each
-section's *Out* column in Setup. Order within each output = order in the Setup list.
+There is a single data output (J5). The order in the Setup list is the order along the chain.
 
 ## Power
 
@@ -85,7 +84,7 @@ Rotato J5 GND ──────────────────────
   marginal** — a 74AHCT125 (or SN74AHCT1G125) powered from 5 V makes it reliable. Strongly recommended for an event.
 - Keep controller → first pixel short (< 1 m). Mount the Rotato board at the NW top corner.
 - 330 Ω series resistor near the driver dampens ringing.
-- Use only the **signal + GND** pins of J5/J6, never the centre +V pin.
+- Use only the **signal + GND** pins of J5, never the centre +V pin.
 
 ## Optional physical buttons
 
@@ -118,7 +117,7 @@ They work even with no WiFi. Internal pull-ups are used, so leaving them unconne
 1. Flash the firmware with **only USB** connected (no 24 V yet).
 2. Connect strip GND + data, then 24 V. You should see the boot rainbow.
 3. Join WiFi **WPFL-Arena-XXXX** (password `wpflarena`) → <http://192.168.4.1>.
-4. Control → **STOP**. If the arena is green instead of red, change *Color order* in Settings (try `RGB`).
+4. Control → **STOP**. If the arena is green instead of red, change *Color order* in Settings (try `GRB`).
 5. Setup → **Identify sections**, then fix each section's pixel count until every colored block ends exactly at
    its corner. Use the **pixel probe** to count.
 6. Settings → Network → join the venue network (or keep the hotspot). Note the IP / `wpfl-arena.local`.

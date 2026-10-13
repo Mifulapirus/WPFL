@@ -31,7 +31,6 @@ static void testLayout(ArenaLayout& L) {
     CHECK(L.numSections() == 8);
     CHECK(L.total() == 72);
     CHECK(L.start(1) == 12 && L.count(1) == 6);           // edge_ne after ceil_n
-    CHECK(L.outputCount(0) == 72 && L.outputCount(1) == 0);
 
     SectionMask m; const char* err = nullptr;
     JsonDocument d;
@@ -51,13 +50,13 @@ static void testLayout(ArenaLayout& L) {
     JsonDocument arr; arr.add("ceil_s"); arr.add("blue");
     CHECK(L.resolve(arr.as<JsonVariantConst>(), m, err) && L.pixelsIn(m) == 12 + 24);
 
-    // Custom layout: two outputs + reversed section
+    // Custom layout: reversed section; a legacy "out" field is ignored
     JsonDocument j;
     deserializeJson(j, R"({"sections":[{"name":"A1","count":5},{"name":"b1","count":3,"out":1,"rev":true},
         {"name":"a2","count":4}],"groups":[{"name":"left","sections":["a1","b1"]}]})");
     CHECK(L.fromJson(j.as<JsonObjectConst>(), err));
-    CHECK(L.total() == 12 && L.outputCount(0) == 9 && L.outputCount(1) == 3);
-    CHECK(L.outputPos(2) == 5);                            // a2 follows a1 on output A
+    CHECK(L.total() == 12 && L.start(2) == 8);            // single chain in list order
+    CHECK(L.section(1).reversed && L.section(1).reserved == 0);
     CHECK(L.findSection("a1") == 0);                       // names lower-cased
     CHECK(L.findGroup("left") == 0 && L.group(0).mask == 0b011);
 
@@ -65,7 +64,6 @@ static void testLayout(ArenaLayout& L) {
     const char* bad[] = {
         R"({"sections":[]})",
         R"({"sections":[{"name":"x","count":0}]})",
-        R"({"sections":[{"name":"x","count":1,"out":2}]})",
         R"({"sections":[{"name":"x","count":1},{"name":"X","count":1}]})",
         R"({"sections":[{"name":"bad name","count":1}]})",
         R"({"sections":[{"name":"all","count":1}]})",
@@ -173,6 +171,16 @@ static void testEngine(ArenaLayout& L) {
         for (uint32_t t = 0; t < 200; t += 7) E.render(t);
     }
     CHECK(true);
+
+    // Identify is static (idle refresh only) and paints full-strength hues
+    E.reset();
+    Effect id; id.type = Fx::Identify; id.mask = 0b11;
+    E.addEffect(id, 0); E.render(0);
+    CHECK(!E.animating());
+    CHECK(same(f[0], color::WHITE) && same(f[1], color::WHITE));   // first pixel of each section
+    CHECK(same(f[2], color::wheel(128)) && f[2].g == 255);       // section 1 of 2, not dimmed
+    id.durationMs = 1000; E.addEffect(id, 0);
+    CHECK(E.animating());                                  // timed → must render to expire
 
     // setPixels touching a section cancels effects only there
     E.reset();

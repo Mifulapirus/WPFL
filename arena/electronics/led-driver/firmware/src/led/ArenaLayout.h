@@ -8,8 +8,8 @@
 // TERMS
 //   pixel   — one addressable unit. On the PAUTIX COB strip that is one
 //             WS2811 IC = one 10 cm segment (63 LEDs).
-//   section — a physical run of strip (e.g. "ceil_n", 12 pixels). Each section
-//             is wired to data output A or B and may be mounted reversed.
+//   section — a physical run of strip (e.g. "ceil_n", 12 pixels). It may be
+//             mounted reversed.
 //   group   — a named set of sections (e.g. "ceiling", "red").
 //   target  — what a command acts on: "all", a group, a section, a
 //             comma-separated list ("ceil_n,edge_ne") or a JSON array of those.
@@ -17,9 +17,9 @@
 // LOGICAL vs PHYSICAL ORDER
 //   Logical pixel index = sections concatenated in list order, each running
 //   from its own index 0 (ceiling: clockwise seen from above; edges: top→down).
-//   Physical order = position on its output's data chain. Sections are chained
-//   on their output in list order; "reversed" flips a section in place.
-//   → The section list order IS the wiring order on each output.
+//   Physical order = position on the single data chain. Sections are chained
+//   in list order; "reversed" flips a section in place.
+//   → The section list order IS the wiring order.
 //
 // Layout is persisted in NVS (namespace "leds", key "layout") as a fixed-size
 // blob, so there is no heap allocation after boot.
@@ -35,7 +35,7 @@ static_assert(LED_MAX_SECTIONS <= 16, "SectionMask is 16 bits");
 struct SectionCfg {
     char     name[LED_NAME_LEN];
     uint16_t count;      // pixels in this section
-    uint8_t  output;     // 0 = A (PIN_LED_DATA_A), 1 = B (PIN_LED_DATA_B)
+    uint8_t  reserved;   // was the output (A/B) index; always 0, keeps the NVS blob shape
     uint8_t  reversed;   // 1 = mounted backwards relative to its logical direction
 };
 
@@ -73,10 +73,8 @@ public:
     uint8_t  numGroups() const                 { return _cfg.numGroups; }
     const SectionCfg& section(uint8_t i) const { return _cfg.sections[i]; }
     const GroupCfg&   group(uint8_t i) const   { return _cfg.groups[i]; }
-    uint16_t start(uint8_t i) const            { return _start[i]; }      // logical start
+    uint16_t start(uint8_t i) const            { return _start[i]; }      // logical = chain start
     uint16_t count(uint8_t i) const            { return _cfg.sections[i].count; }
-    uint16_t outputPos(uint8_t i) const        { return _outPos[i]; }     // start on its chain
-    uint16_t outputCount(uint8_t o) const      { return o < LED_NUM_OUTPUTS ? _outCount[o] : 0; }
     uint16_t total() const                     { return _total; }
     SectionMask allMask() const;
 
@@ -95,8 +93,6 @@ public:
 private:
     LayoutCfg _cfg{};
     uint16_t  _start[LED_MAX_SECTIONS]  = {};
-    uint16_t  _outPos[LED_MAX_SECTIONS] = {};
-    uint16_t  _outCount[LED_NUM_OUTPUTS] = {};
     uint16_t  _total = 0;
 
     void recompute();

@@ -93,7 +93,9 @@ public:
     // ── Rendering ────────────────────────────────────────────────────────────
     void render(uint32_t now);
     const RGB* frame() const  { return _out; }
-    bool animating() const    { return _count > 0; }
+    // True if the frame changes over time (needs LED_FPS renders). Identify is
+    // static, so it only gets the idle refresh, like a solid fill.
+    bool animating() const;
 
     // True once after any change worth broadcasting (effect start/end, tick).
     bool takeChanged()        { bool c = _changed; _changed = false; return c; }

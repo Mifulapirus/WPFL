@@ -9,8 +9,10 @@
 
 #ifdef HAS_BUZZER
 
+// "Charge!" bugle call: G4 C5 E5 G5 … E5 G5 (held)
 static const BeepStep SEQ_STARTUP[] = {
-    {880, 100}, {0, 50}, {1174, 100}, {0, 50}, {1568, 200}
+    {392, 90}, {0, 30}, {523, 90}, {0, 30}, {659, 90}, {0, 30}, {784, 180},
+    {0, 60}, {659, 90}, {0, 30}, {784, 400}
 };
 static const BeepStep SEQ_TICK[]    = { {880, 120} };
 static const BeepStep SEQ_GO[]      = { {1568, 600} };
