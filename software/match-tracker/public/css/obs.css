@@ -39,7 +39,7 @@ html[data-bg=green] body{background:#00b140}
 .fb-side.red{background:linear-gradient(90deg,var(--red),var(--red-d) 72%,#14070a);padding-right:40px;
   clip-path:polygon(0 0,calc(100% - 30px) 0,100% 100%,0 100%);border-radius:14px 0 0 14px}
 .fb-side.blue{flex-direction:row-reverse;text-align:right;background:linear-gradient(270deg,var(--blue),var(--blue-d) 72%,#060b19);
-  padding-left:40px;clip-path:polygon(0 0,100% 0,100% 100%,30px 100%);border-radius:0 14px 14px 0}
+  padding-left:40px;clip-path:polygon(30px 0,100% 0,100% 100%,0 100%);border-radius:0 14px 14px 0}
 .fb-pic{position:relative;width:136px;height:136px;flex:none}
 .fb-pic .av{width:100%;height:100%;font-size:62px}
 .red .fb-pic .av{border-radius:14px 0 0 14px}.blue .fb-pic .av{border-radius:0 14px 14px 0}
