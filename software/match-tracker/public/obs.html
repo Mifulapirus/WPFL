@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WPFL — Broadcast graphics</title>
+<meta name="theme-color" content="#0e1014">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/obs-index.css">
+<!-- WPFL Match Tracker — broadcast graphics guide. Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) -->
+</head>
+<body>
+<header class="bar"><div><div class="brand"><b>WPFL</b><span>Broadcast graphics for OBS</span></div></div></header>
+<main class="tab">
+  <div class="card">
+    <h2>Setup</h2>
+    <p class="lead">Each graphic is a live web page. In OBS add a <b>Browser</b> source with the link below,
+      <b>Width 1920</b>, <b>Height 1080</b>, and leave “Shutdown source when not visible” <b>off</b> so it stays connected.
+      Everything updates on its own from the referee console; pages reload themselves after an update.</p>
+    <ul class="tips">
+      <li>The fight bar has a <b>transparent</b> background: put it above the camera. Bracket and ranking have a dark background
+        (full-screen scenes); add <code>?bg=transparent</code> to put them over video, or <code>?bg=green</code> for a chroma key.</li>
+      <li>Before event day they show the next scheduled event. Add <code>?demo=1</code> to the fight bar to see a fight run
+        through every state (countdown, clock, KO count, winner) while you build the scenes.</li>
+    </ul>
+  </div>
+  <div class="srcs" id="srcs"></div>
+</main>
+<div id="toast"></div>
+<script type="module" src="/js/obs-index.js"></script>
+</body>
+</html>

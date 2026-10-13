@@ -7,6 +7,7 @@ Live brackets, fight control and arena lights for WPFL events. Runs on **Capek-W
 |---|---|---|
 | **`/`** | Everyone | Live fight, up next, results, ranking, Swiss bracket, standings, **robot battlecards** (trading cards that flip over: robot on the front, team and fight log on the back), final podium, past events |
 | **`/ref`** | Referees (password) | Fight console, bracket editor, robots, event settings, arena LED link |
+| **`/obs`** | TV / stream crew | Broadcast graphics for OBS: **fight bar** (`/obs/fight`), **bracket** (`/obs/bracket`), **ranking** (`/obs/ranking`) — see below |
 
 Status: **first pass** (v0.1) — Swiss format end to end, live fight control, LED link tested against the real driver.
 
@@ -72,6 +73,27 @@ tabs edit; the **Fight** tab always runs the live event.
 Mistakes: **Bracket → Edit → Reset** clears a result; **Result…** records one by hand; **Add a fight** creates extra or
 exhibition fights (exhibitions don't count). The fight queue warns when a robot rested less than the minimum.
 Standings: wins → Buchholz (sum of opponents' wins) → fewer losses → name.
+
+## Broadcast graphics (OBS)
+
+Three live pages for the stream, each an OBS **Browser** source at **1920 × 1080** (keep "Shutdown source when not
+visible" off). They follow the same `/ws` feed as the public page, so they change the instant the referee does
+something, and they reload themselves after a deploy. `/obs` is the hand-off page for the crew: links with copy
+buttons, the options, and live previews.
+
+| Page | Background | What it shows |
+|---|---|---|
+| `/obs/fight` | transparent | Lower-third scorebug: red and blue robot (photo or monogram, name, team, record, rank, faults), match clock, 3-2-1 countdown, KO / pin count over the robot's picture, winner. Between fights: the next fight ("Up next"); hidden when nothing is queued |
+| `/obs/bracket` | dark | Swiss rounds as columns: every pairing, winner ✓ and method, LIVE / NEXT marks, placeholders for rounds not paired yet |
+| `/obs/ranking` | dark | Standings: position (gold/silver/bronze), robot, team, W, L, KO, Buchholz; LIVE / NEXT / OUT / CHAMPION tags; rows slide to their new place after a result |
+
+Options (query string): `bg=transparent|dark|green` (any page; green = chroma key) · fight: `pos=top`, `idle=hide`,
+`demo=1` (loops a fake fight through every state, for building scenes before event day) · bracket: `rounds=N` (most
+columns, default 5) · ranking: `top=N`, `cols=1|2`.
+
+They show the **live** event, or the next published one before it starts. Robots whose battlecard is hidden show a
+monogram instead of a photo (same public allow-list as the viewer). Fonts are the event site's Anton and Krona One
+(SIL OFL), served from `public/fonts/`.
 
 ## Run locally
 
@@ -158,7 +180,8 @@ and manual scene buttons.
   contact details from the registration form are never stored at all.
 - The LED link requires `Authorization: Bearer <LED_KEY>` (constant-time compare) and the driver verifies the server's
   certificate against the Let's Encrypt roots.
-- Strict CSP (no inline scripts or styles), no third-party assets.
+- Strict CSP (no inline scripts or styles), no third-party assets. Pages can't be framed, except the `/obs/*`
+  graphics by our own `/obs` page (`frame-ancestors 'self'`).
 
 ## Code map
 
@@ -172,6 +195,7 @@ src/importer.js      registration sheet/CSV import (header-based column mapping,
 src/media.js         banner uploads (magic-byte check, random names)
 src/store.js         data/events/<id>.json per event (atomic, debounced) + data/archive/ (past events) + v1 migration
 public/              index.html + js/viewer.js (public), ref.html + js/ref.js (referee), js/live.js (shared), css/
+                     obs*.html + js/obs*.js + css/obs.css (broadcast graphics), fonts/
 deploy/              deploy.sh, PM2 ecosystem, nginx site
 ```
 

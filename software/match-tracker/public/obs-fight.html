@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WPFL — Fight bar (OBS)</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/css/obs.css">
+<!-- WPFL Match Tracker — broadcast fight bar. Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) -->
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="fb" id="bar">
+    <div class="fb-tab"><b id="evTitle"></b><span id="fightTitle"></span></div>
+    <div class="fb-row">
+      <div class="fb-side red" id="red">
+        <div class="fb-pic"><span class="av none"></span><div class="fb-count"></div></div>
+        <div class="fb-who"><small>RED CORNER</small><b class="fb-name"></b><span class="fb-meta"></span></div>
+      </div>
+      <div class="fb-mid">
+        <div class="fb-clock" id="clock">2:00</div>
+        <div class="fb-phase" id="phase"></div>
+      </div>
+      <div class="fb-side blue" id="blue">
+        <div class="fb-pic"><span class="av none"></span><div class="fb-count"></div></div>
+        <div class="fb-who"><small>BLUE CORNER</small><b class="fb-name"></b><span class="fb-meta"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="/js/obs-fight.js"></script>
+</body>
+</html>

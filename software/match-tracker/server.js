@@ -1,6 +1,7 @@
 // WPFL Match Tracker — HTTP + WebSocket server.
 //   /            public viewer: the live event, or the next upcoming one (countdown, robots)
 //   /ref         referee console (password protected)
+//   /obs/*       broadcast graphics for OBS browser sources (fight bar, bracket, ranking)
 //   /ws          browser WebSocket: everyone gets state; referees can send commands
 //   /led         arena LED driver uplink (Bearer LED_KEY)
 //   /api/archive past events (list, read-only view, referee export)
@@ -283,10 +284,13 @@ async function runCommand(op, args = {}, ev = null) {
 // ── HTTP ──────────────────────────────────────────────────────────────────
 const PUBLIC = path.join(cfg.root, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
-                '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json' };
-const ROUTES = { '/': 'index.html', '/ref': 'ref.html' };
+                '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json',
+                '.woff2': 'font/woff2' };
+const ROUTES = { '/': 'index.html', '/ref': 'ref.html', '/obs': 'obs.html', '/obs/fight': 'obs-fight.html',
+                 '/obs/bracket': 'obs-bracket.html', '/obs/ranking': 'obs-ranking.html' };
 
-function headers(res, req, type) {
+// The broadcast graphics may be framed by our own pages (the /obs previews); nothing else may be.
+function headers(res, req, type, frameSelf = false) {
   res.setHeader('Content-Type', type);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
@@ -294,7 +298,7 @@ function headers(res, req, type) {
   if (type.startsWith('text/html')) {
     res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob:; " +
       `connect-src 'self' wss://${req.headers.host} ws://${req.headers.host}; ` +
-      "frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
+      `frame-ancestors ${frameSelf ? "'self'" : "'none'"}; base-uri 'none'; form-action 'self'; object-src 'none'`);
   }
 }
 
@@ -319,7 +323,7 @@ function serveFile(res, req, rel) {
   if (!file.startsWith(PUBLIC + path.sep) || path.basename(file).startsWith('.')) return notFound(res, req);
   fs.readFile(file, (err, data) => {
     if (err) return notFound(res, req);
-    headers(res, req, TYPES[path.extname(file)] || 'application/octet-stream');
+    headers(res, req, TYPES[path.extname(file)] || 'application/octet-stream', rel.startsWith('obs-'));
     res.end(data);
   });
 }
@@ -331,7 +335,7 @@ const server = http.createServer(async (req, res) => {
   const p = url.pathname;
   try {
     if (req.method === 'GET' && ROUTES[p]) return serveFile(res, req, ROUTES[p]);
-    if (req.method === 'GET' && /^\/(css|js)\/[\w.-]+$|^\/favicon\.svg$/.test(p)) return serveFile(res, req, p.slice(1));
+    if (req.method === 'GET' && /^\/(css|js|fonts)\/[\w.-]+$|^\/favicon\.svg$/.test(p)) return serveFile(res, req, p.slice(1));
     const media = req.method === 'GET' && /^\/media\/([^/]+)$/.exec(p);
     if (media) {
       if (!MEDIA_NAME.test(media[1])) return notFound(res, req);
