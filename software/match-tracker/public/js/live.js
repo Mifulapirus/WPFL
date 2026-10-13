@@ -23,12 +23,14 @@ export const METHOD = { ko: 'KO', judges: 'Judges', forfeit: 'Forfeit', bye: 'By
 
 // ── Connection ─────────────────────────────────────────────────────────────
 // onState(msg) gets every state push. now() = estimated server time.
-export function connect({ onState, onStatus }) {
+export function connect({ onState, onStatus, ref = false }) {
   let ws, offset = 0, seq = 0, build = null;
   const pending = new Map();
 
   function open() {
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    // Only the referee console asks for the referee feed; every other page reads the public
+    // one, even in a browser that holds the referee cookie.
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws${ref ? '?ref=1' : ''}`);
     ws.onopen = () => { onStatus?.(true); syncTime(); };
     ws.onclose = () => {
       onStatus?.(false);

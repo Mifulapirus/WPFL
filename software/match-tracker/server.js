@@ -2,7 +2,7 @@
 //   /            public viewer: the live event, or the next upcoming one (countdown, robots)
 //   /ref         referee console (password protected)
 //   /obs/*       broadcast graphics for OBS browser sources (fight bar, bracket, ranking)
-//   /ws          browser WebSocket: everyone gets state; referees can send commands
+//   /ws          browser WebSocket: everyone gets public state; /ws?ref=1 + referee cookie gets the referee feed and may send commands
 //   /led         arena LED driver uplink (Bearer LED_KEY)
 //   /api/archive past events (list, read-only view, referee export)
 // Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) — Non-Commercial Source-Available License.
@@ -402,9 +402,11 @@ function sameOrigin(req) {
 }
 
 server.on('upgrade', (req, socket, head) => {
-  const p = new URL(req.url, 'http://local').pathname;
+  const url = new URL(req.url, 'http://local'), p = url.pathname;
   if (p === '/ws') {
-    const ref = auth.isReferee(req) && sameOrigin(req);
+    // Referee feed only when the page asks for it (/ws?ref=1): the viewer and OBS pages
+    // can't read it, and they share the referee cookie on the referee's own browser.
+    const ref = url.searchParams.get('ref') === '1' && auth.isReferee(req) && sameOrigin(req);
     wssClients.handleUpgrade(req, socket, head, ws => onClient(ws, ref));
   } else if (p === '/led') {
     if (!led.accepts(req)) {

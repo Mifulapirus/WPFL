@@ -48,7 +48,7 @@ fetch('/api/session').then(r => r.json()).then(s => {
   $('ledChip').classList.remove('hide');
   $('evPick').classList.remove('hide');
   showTab(sessionTab() || 'fight');
-  conn = connect({ onState, onStatus: on => $('dot').classList.toggle('on', on) });
+  conn = connect({ ref: true, onState, onStatus: on => $('dot').classList.toggle('on', on) });
 });
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
