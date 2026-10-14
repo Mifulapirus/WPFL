@@ -15,13 +15,19 @@ static const uint16_t LAYOUT_MAGIC  = 0xA7E1;   // bump if LayoutCfg changes sha
 // Chain order (one data line), starting at the NW top corner:
 //   ceil_n (NW→NE) → edge_ne (top→bottom) → [data return wire up the NE edge]
 //   → ceil_e (NE→SE) → edge_se → ceil_s (SE→SW) → edge_sw → ceil_w (SW→NW) → edge_nw
+//   → floor_w (NW→SW, at the bottom of edge_nw) → [data jumper along the south
+//   floor edge, SW→SE] → floor_e (SE→NE)
+// Floor pieces run clockwise seen from above, like the ceiling, so floor pixel i
+// sits under ceiling pixel i. That path lays both of them the other way round,
+// hence reversed by default.
 // See docs/wiring.md. Red robot side = west half, blue = east half.
-struct DefaultSection { const char* name; uint16_t count; };
+struct DefaultSection { const char* name; uint16_t count; bool reversed; };
 static const DefaultSection DEFAULT_SECTIONS[] = {
-    {"ceil_n",  LED_DEFAULT_CEILING_PIXELS}, {"edge_ne", LED_DEFAULT_EDGE_PIXELS},
-    {"ceil_e",  LED_DEFAULT_CEILING_PIXELS}, {"edge_se", LED_DEFAULT_EDGE_PIXELS},
-    {"ceil_s",  LED_DEFAULT_CEILING_PIXELS}, {"edge_sw", LED_DEFAULT_EDGE_PIXELS},
-    {"ceil_w",  LED_DEFAULT_CEILING_PIXELS}, {"edge_nw", LED_DEFAULT_EDGE_PIXELS},
+    {"ceil_n",  LED_DEFAULT_CEILING_PIXELS, false}, {"edge_ne", LED_DEFAULT_EDGE_PIXELS, false},
+    {"ceil_e",  LED_DEFAULT_CEILING_PIXELS, false}, {"edge_se", LED_DEFAULT_EDGE_PIXELS, false},
+    {"ceil_s",  LED_DEFAULT_CEILING_PIXELS, false}, {"edge_sw", LED_DEFAULT_EDGE_PIXELS, false},
+    {"ceil_w",  LED_DEFAULT_CEILING_PIXELS, false}, {"edge_nw", LED_DEFAULT_EDGE_PIXELS, false},
+    {"floor_w", LED_DEFAULT_FLOOR_PIXELS,   true},  {"floor_e", LED_DEFAULT_FLOOR_PIXELS,  true},
 };
 
 void ArenaLayout::setDefaults() {
@@ -30,7 +36,8 @@ void ArenaLayout::setDefaults() {
     _cfg.numSections = sizeof(DEFAULT_SECTIONS) / sizeof(DEFAULT_SECTIONS[0]);
     for (uint8_t i = 0; i < _cfg.numSections; i++) {
         strlcpy(_cfg.sections[i].name, DEFAULT_SECTIONS[i].name, LED_NAME_LEN);
-        _cfg.sections[i].count = DEFAULT_SECTIONS[i].count;
+        _cfg.sections[i].count    = DEFAULT_SECTIONS[i].count;
+        _cfg.sections[i].reversed = DEFAULT_SECTIONS[i].reversed ? 1 : 0;
     }
     auto secBit = [this](const char* n) -> SectionMask {
         for (uint8_t i = 0; i < _cfg.numSections; i++)
@@ -40,8 +47,9 @@ void ArenaLayout::setDefaults() {
     const struct { const char* name; SectionMask mask; } groups[] = {
         {"ceiling", (SectionMask)(secBit("ceil_n") | secBit("ceil_e") | secBit("ceil_s") | secBit("ceil_w"))},
         {"edges",   (SectionMask)(secBit("edge_ne") | secBit("edge_se") | secBit("edge_sw") | secBit("edge_nw"))},
-        {"red",     (SectionMask)(secBit("ceil_w") | secBit("edge_nw") | secBit("edge_sw"))},
-        {"blue",    (SectionMask)(secBit("ceil_e") | secBit("edge_ne") | secBit("edge_se"))},
+        {"floor",   (SectionMask)(secBit("floor_w") | secBit("floor_e"))},
+        {"red",     (SectionMask)(secBit("ceil_w") | secBit("edge_nw") | secBit("edge_sw") | secBit("floor_w"))},
+        {"blue",    (SectionMask)(secBit("ceil_e") | secBit("edge_ne") | secBit("edge_se") | secBit("floor_e"))},
     };
     _cfg.numGroups = sizeof(groups) / sizeof(groups[0]);
     for (uint8_t i = 0; i < _cfg.numGroups; i++) {

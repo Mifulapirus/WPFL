@@ -19,6 +19,10 @@ void Uplink::begin() {
         p.end();
     }
     Serial.printf("[Uplink] %s%s\n", _enabled ? "enabled → " : "disabled", _enabled ? _url.c_str() : "");
+
+    _txMtx  = xSemaphoreCreateMutex();
+    _outbox = xRingbufferCreateStatic(sizeof(_outboxMem), RINGBUF_TYPE_NOSPLIT, _outboxMem, &_outboxCtl);
+    xTaskCreate(&Uplink::txTask, "uplink_tx", 4096, this, 1, nullptr);
 }
 
 bool Uplink::validUrl(const String& url) {
@@ -86,9 +90,12 @@ void Uplink::start() {
 
 void Uplink::stop() {
     if (!_client) return;
-    esp_websocket_client_stop(_client);       // waits for the task to finish
-    esp_websocket_client_destroy(_client);
+    xSemaphoreTake(_txMtx, portMAX_DELAY);    // let a write in progress finish
+    esp_websocket_client_handle_t c = _client;
     _client = nullptr;
+    xSemaphoreGive(_txMtx);
+    esp_websocket_client_stop(c);             // waits for the task to finish
+    esp_websocket_client_destroy(c);
     if (_connected) {
         _connected = false;
         if (_onConn) _onConn(false);
@@ -97,9 +104,25 @@ void Uplink::stop() {
 }
 
 bool Uplink::send(const char* data, size_t len) {
-    if (!_client || !_connected) return false;
-    // Short timeout: a slow link drops a state/status update instead of stalling loop().
-    return esp_websocket_client_send_text(_client, data, (int)len, pdMS_TO_TICKS(50)) == (int)len;
+    if (!_client || !_connected || !_outbox) return false;
+    return xRingbufferSend(_outbox, data, len, 0) == pdTRUE;   // never blocks loop()
+}
+
+// Drains the outbox. Messages queued before a disconnect are discarded.
+void Uplink::txTask(void* arg) {
+    Uplink* self = static_cast<Uplink*>(arg);
+    for (;;) {
+        size_t n = 0;
+        char* item = (char*)xRingbufferReceive(self->_outbox, &n, portMAX_DELAY);
+        if (!item) continue;
+        xSemaphoreTake(self->_txMtx, portMAX_DELAY);
+        if (self->_client && self->_connected &&
+            esp_websocket_client_send_text(self->_client, item, (int)n,
+                                           pdMS_TO_TICKS(UPLINK_SEND_TIMEOUT_MS)) != (int)n)
+            Serial.println("[Uplink] Send failed.");
+        xSemaphoreGive(self->_txMtx);
+        vRingbufferReturnItem(self->_outbox, item);
+    }
 }
 
 // Runs on the websocket client task.

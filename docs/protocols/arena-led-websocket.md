@@ -43,8 +43,8 @@ socket. Read-only commands (`ping`, `auth`, `get_*`, `subscribe`) always work.
 | Term | Meaning |
 |---|---|
 | **pixel** | One addressable unit. On the PAUTIX COB strip: one WS2811 IC = one **10 cm segment** (63 LEDs). |
-| **section** | A physical piece of strip, e.g. `ceil_n` (12 px) or `edge_ne` (6 px). Ceiling sections run clockwise seen from above; edges run top → bottom. |
-| **group** | A named set of sections. Defaults: `ceiling`, `edges`, `red` (west half), `blue` (east half). |
+| **section** | A physical piece of strip, e.g. `ceil_n` (12 px), `edge_ne` (6 px) or `floor_e` (12 px). Ceiling and floor sections run clockwise seen from above; edges run top → bottom. |
+| **group** | A named set of sections. Defaults: `ceiling`, `edges`, `floor`, `red` (west half), `blue` (east half). |
 | **target** | What a command acts on: `"all"` (default when omitted), a group, a section, a comma list `"ceil_n,edge_ne"`, or an array `["red","ceil_n"]`. |
 | **logical index** | Pixel number with sections concatenated in list order. Used by `pixels` and binary frames. |
 | **base layer** | Static colors. Set by `solid`, `off`, `pixel`, `pixels`, binary frames. |
@@ -91,16 +91,20 @@ Without `id`, successful commands get **no reply** (lowest latency, fire-and-for
 | `solid` | `color`, `target?`, `label?` | Base fill. |
 | `off` | `target?`, `label?` | Same as `solid` black. |
 | `effect` | `fx`, `target?`, `color?` (white), `color2?` (black), `period?` ms, `duration?` ms (0 = forever), `overlay?`, `value?` (0–1, progress), `label?` | `fx`: `blink` `breathe` `rainbow` `chase` `sparkle` `progress` `identify` (also `solid`/`off`). |
-| `countdown` | `target?`, `seconds?`, `warnAt?`, `goMs?`, `high?`, `warn?`, `go?`, `then?` (color or `"none"`), `label?` | Missing fields use the saved defaults (3 s, warn at 2 s, GO flash 2000 ms, red/orange/green, then green). |
+| `countdown` | `target?`, `seconds?`, `warnAt?`, `goMs?`, `high?`, `warn?`, `go?`, `then?` (color or `"none"`), `style?` (`"pulse"` or `"solid"`), `label?` | Missing fields use the saved defaults (3 s, warn at 2 s, GO flash 2000 ms, red/yellow/green, then green, style pulse). |
 | `cancel` | `target?` | Stop effects (and countdowns) on the target; base stays. |
 | `brightness` | `value` 0–255 | Global, saved. |
 | `pixel` | `index`, `color`, `target?` (one section → index is inside it), `clear?` | Base layer. `clear:true` blacks out everything first. |
 | `pixels` | `hex` (`"ff0000 00ff00…"` without spaces), `start?`, `target?` (one section) | Base layer, logical order. |
 | `identify` | `on` (default true) | Setup aid: each section its own hue, first pixel white. |
 
-**Countdown timeline** (defaults): `3` red → `2` orange → `1` orange → **GO** green flashing (150 ms) for 2 s → solid
-green. "Red" lasts while remaining time > `warnAt`; "orange" from `warnAt` down to 0. When the GO phase ends the
+**Countdown timeline** (defaults): `3` red → `2` yellow → `1` yellow → **GO** green flashing (150 ms) for 2 s → solid
+green. "Red" lasts while remaining time > `warnAt`; "yellow" from `warnAt` down to 0. When the GO phase ends the
 `state.label` becomes `"go"`.
+
+`style`: `"pulse"` (default) makes the red phase **breathe** (1 s per breath, brightest on each whole second, in step
+with the beeps) and the yellow phase **flash very fast** (50 ms on / 50 ms off). `"solid"` keeps both steady (the
+10 s count uses this). The GO flash is the same in both styles.
 
 ### Session
 
@@ -146,24 +150,24 @@ per message (~1000 pixels).
 ### `state`
 
 ```json
-{"type":"state","label":"countdown","brightness":200,"pixels":72,
- "effects":[{"fx":"countdown","mask":255,"overlay":false}],
- "countdown":{"remainingMs":1400,"secondsLeft":2,"phase":"warn","mask":255}}
+{"type":"state","label":"countdown","brightness":200,"pixels":96,
+ "effects":[{"fx":"countdown","mask":1023,"overlay":false}],
+ "countdown":{"remainingMs":1400,"secondsLeft":2,"phase":"warn","mask":1023,"style":"pulse"}}
 ```
 
 `mask` = bit *i* set → section *i* of `config.layout.sections`. `countdown` is `null` when none is running.
-`phase`: `high` | `warn` | `go`. Effects with a duration include `leftMs`.
+`phase`: `high` | `warn` | `go`. `style`: `pulse` | `solid`. Effects with a duration include `leftMs`.
 
 ### `status` (every 2 s)
 
 ```json
-{"type":"status","fw":"0.1.0.12","proto":1,"uptime":5321,
+{"type":"status","fw":"0.1.0.12","proto":1,"uptime":5321,"reset":"power_on",
  "heap":{"free":183000,"min":171000,"maxBlock":110580,"total":327680},
  "wifi":{"mode":"sta","ip":"192.168.1.50","ssid":"Asmbly","rssi":-58,"host":"wpfl-arena","apSsid":"WPFL-Arena-A3F2"},
- "clients":2,"fps":60,"watts":41.3,"limited":false,"supplyV":null,"pixels":72,"auth":false,"uplink":"connected"}
+ "clients":2,"fps":60,"watts":41.3,"limited":false,"supplyV":null,"pixels":96,"auth":false,"uplink":"connected"}
 ```
 
-`watts` is an estimate after brightness/gamma/limit. `supplyV` is `null` when nothing is wired to the battery input.
+`reset`: why the chip last restarted (`power_on`, `software`, `panic`, `task_wdt`, `int_wdt`, `brownout`; `unknown` also covers a reset over USB, e.g. after flashing). `watts` is an estimate after brightness/gamma/limit. `supplyV` is `null` when nothing is wired to the battery input.
 `wifi.mode`: `sta`, `ap`, or `ap+sta` (fallback hotspot up while retrying the network).
 `uplink`: `off`, `waiting` (no WiFi network yet), `connecting`, `connected`.
 
@@ -172,10 +176,10 @@ per message (~1000 pixels).
 ```json
 {"type":"config","fw":"0.1.0.12","proto":1,
  "layout":{"sections":[{"name":"ceil_n","count":12,"rev":false,"start":0}, …],
-           "groups":[{"name":"ceiling","sections":["ceil_n","ceil_e","ceil_s","ceil_w"]}, …],"total":72},
+           "groups":[{"name":"ceiling","sections":["ceil_n","ceil_e","ceil_s","ceil_w"]}, …],"total":96},
  "settings":{"brightness":200,"colorOrder":"RGB","gamma":true,"maxWatts":100,"wattsPerPixel":1.2,
              "bootScene":"rainbow","buzzer":true,
-             "countdown":{"seconds":3,"warnAt":2,"goMs":2000,"high":"#ff0000","warn":"#ff6a00","go":"#00ff00","then":"#00ff00"}},
+             "countdown":{"seconds":3,"warnAt":2,"goMs":2000,"high":"#ff0000","warn":"#ffc800","go":"#00ff00","then":"#00ff00"}},
  "device":{"hostname":"wpfl-arena","apSsid":"WPFL-Arena-A3F2","tokenSet":false},
  "uplink":{"enabled":true,"url":"wss://wpfl-asmbly.thehomelab.dev/led","keySet":true},
  "wifi":{"ssid":"Asmbly","static":{"enabled":false,"ip":"","gateway":"","mask":"255.255.255.0","dns":""}},
@@ -216,7 +220,7 @@ curl -X POST http://wpfl-arena.local/api/cmd -d '{"type":"countdown","seconds":5
 {"type":"countdown","label":"start"}
 {"type":"solid","color":"green","label":"fight"}
 {"type":"effect","fx":"blink","target":"red","color":"yellow","period":300,"duration":3000,"overlay":true}
-{"type":"countdown","seconds":10,"warnAt":3,"high":"yellow","warn":"red","go":"red","then":"red","label":"10s count"}
+{"type":"countdown","seconds":10,"warnAt":3,"high":"yellow","warn":"red","go":"red","then":"red","style":"solid","label":"10s count"}
 {"type":"effect","fx":"progress","target":"ceiling","color":"green","color2":"#200000","value":0.75}
 {"type":"solid","color":"red","label":"red wins"}
 {"type":"effect","fx":"sparkle","color":"white","color2":"red","period":90,"duration":6000,"overlay":true}

@@ -142,8 +142,15 @@ bool LedEngine::renderEffect(Effect& e, uint32_t now) {
         RGB c;
         if (remaining > (int32_t)e.cdWarnMs) {
             c = e.c1;
+            if (e.cdPulse) {   // synced to the beeps: full on each whole second
+                uint32_t ph = (uint32_t)remaining % CD_BREATHE_PERIOD_MS;
+                c = color::blend(color::BLACK, e.c1,
+                                 color::breath8((uint8_t)(ph * 256 / CD_BREATHE_PERIOD_MS + 128)));
+            }
         } else if (remaining > 0) {
             c = e.cdWarn;
+            if (e.cdPulse && (((e.cdWarnMs - (uint32_t)remaining) / CD_WARN_FLASH_PERIOD_MS) & 1))
+                c = color::BLACK;
         } else {
             uint32_t since = (uint32_t)(-remaining);
             if (since >= e.cdGoMs) {
@@ -234,6 +241,7 @@ void LedEngine::toJson(JsonObject out, uint32_t now) const {
             cd["secondsLeft"] = e.cdLastSec < 0 ? 0 : e.cdLastSec;
             cd["phase"] = remaining > (int32_t)e.cdWarnMs ? "high" : remaining > 0 ? "warn" : "go";
             cd["mask"]  = e.mask;
+            cd["style"] = e.cdPulse ? "pulse" : "solid";
         }
         JsonObject o = arr.add<JsonObject>();
         o["fx"]      = fxName(e.type);

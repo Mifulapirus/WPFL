@@ -16,6 +16,13 @@
 // ws:// works for LAN tests. Auth: "Authorization: Bearer <key>".
 // Reconnects by itself every ~10 s while enabled and WiFi (STA) is up.
 //
+// SENDING: send() only copies the message into an outbox (ring buffer) and
+// returns; a small "uplink_tx" task writes it with a generous timeout. The
+// ESP-IDF 4.4 client aborts the whole connection when a write times out, so
+// a short timeout on a weak link meant constant reconnects, and a long one
+// in loop() would freeze the LEDs. Outbox full → the message is dropped
+// (status/state are resent anyway).
+//
 // THREADING: callbacks run on the uplink task — same rules as AsyncTCP
 // callbacks (ArenaController takes its mutex). send() may be called from
 // loop() but NEVER while holding the controller mutex: the client task holds
@@ -27,6 +34,8 @@
 #include <Arduino.h>
 #include <functional>
 #include <esp_websocket_client.h>
+#include <freertos/ringbuf.h>
+#include <freertos/semphr.h>
 #include "config.h"
 
 class Uplink {
@@ -34,14 +43,14 @@ public:
     using ConnHandler = std::function<void(bool connected)>;
     using TextHandler = std::function<void(const char* data, size_t len)>;
 
-    void begin();                       // load NVS settings
+    void begin();                       // load NVS settings, start the send task
     void update(bool wifiUp);           // loop(): start/stop with WiFi and settings
 
     // Validate + persist. Call from loop() (NVS write); restarts the link.
     bool save(const String& url, const String& key, bool keepKey, bool enabled, const char*& err);
     void factoryReset();                // wipes "up"
 
-    bool send(const char* data, size_t len);   // false if not connected / busy
+    bool send(const char* data, size_t len);   // queue; false if not connected / outbox full
 
     void onConnection(ConnHandler h) { _onConn = h; }
     void onText(TextHandler h)       { _onText = h; }
@@ -69,7 +78,15 @@ private:
     char   _rx[WS_MAX_MSG_LEN];
     size_t _rxLen = 0;
 
+    // Outbox (static: no heap) + the task that drains it. _txMtx guards
+    // _client against stop() destroying it mid-write.
+    RingbufHandle_t    _outbox = nullptr;
+    StaticRingbuffer_t _outboxCtl;
+    uint8_t            _outboxMem[UPLINK_OUTBOX_BYTES];
+    SemaphoreHandle_t  _txMtx = nullptr;
+
     void start();
     void stop();
+    static void txTask(void* arg);
     static void onEvent(void* arg, esp_event_base_t base, int32_t id, void* data);
 };

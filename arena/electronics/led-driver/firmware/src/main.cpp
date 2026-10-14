@@ -76,8 +76,9 @@ void setup() {
     Serial.println("========================================");
     Serial.printf("[Boot] Firmware v%s (built %s %s), protocol v%d\n",
                   FW_VERSION_FULL, FW_BUILD_DATE, FW_BUILD_TIME, PROTOCOL_VERSION);
-    Serial.printf("[Boot] %s rev %u, %u MHz, flash %u MB\n", ESP.getChipModel(),
-                  ESP.getChipRevision(), ESP.getCpuFreqMHz(), ESP.getFlashChipSize() / (1024 * 1024));
+    Serial.printf("[Boot] %s rev %u, %u MHz, flash %u MB, reset: %s\n", ESP.getChipModel(),
+                  ESP.getChipRevision(), ESP.getCpuFreqMHz(), ESP.getFlashChipSize() / (1024 * 1024),
+                  resetReasonName());
     Serial.printf("[Heap] boot               free=%u  maxBlock=%u  (total %u)\n",
                   ESP.getFreeHeap(), ESP.getMaxAllocHeap(), ESP.getHeapSize());
 

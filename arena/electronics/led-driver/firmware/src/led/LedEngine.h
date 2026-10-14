@@ -24,7 +24,8 @@
 // COUNTDOWN is an effect: HIGH color while remaining > warnAt, WARN color
 // until 0, then GO color flashing for goMs, then (optionally) THEN color is
 // written into the base buffer. A callback fires on every whole second and
-// at GO, used for buzzer beeps and state broadcasts.
+// at GO, used for buzzer beeps and state broadcasts. With cdPulse the HIGH
+// color breathes (brightest on each whole second) and WARN flashes very fast.
 //
 // THREADING: not thread-safe. ArenaController serializes access with a mutex.
 // =============================================================================
@@ -65,6 +66,7 @@ struct Effect {
     uint16_t    cdGoMs     = 0;
     RGB         cdWarn, cdGo, cdThen;
     bool        cdHasThen  = false;
+    bool        cdPulse    = false;  // HIGH breathes, WARN flashes fast
     int16_t     cdLastSec  = -1;
 };
 

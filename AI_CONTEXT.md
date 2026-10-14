@@ -34,7 +34,7 @@
 | Framework | Arduino, `platform = espressif32 @ 6.9.0` (arduino-esp32 2.0.17, IDF 4.4) |
 | Libraries | ESPAsyncWebServer 3.x (esp32async), ArduinoJson 7 · LED output: IDF `spi_master` + DMA (no LED library) |
 | Strip | PAUTIX 24 V COB, **WS2811, 1 IC per 10 cm, RGB** (listing says GRB — it's wrong), 1.2 W/pixel |
-| Default layout | 8 sections (4 ceiling × 12 px, 4 edges × 6 px) = 72 px, chain-interleaved |
+| Default layout | 10 sections (4 ceiling × 12 px, 4 edges × 6 px, floor E/W × 12 px) = 96 px, chain-interleaved, floor at the end |
 | Build | `pio run` · flash `pio run -t upload` · UI embedded from `ui/index.html` |
 | Host tests | `sh test_host/run.sh` (Color, ArenaLayout, LedEngine with an Arduino shim) |
 

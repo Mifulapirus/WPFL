@@ -202,14 +202,14 @@ progress{width:100%;accent-color:var(--acc)}
     <div class="head"><h2>Sections — wiring order</h2>
       <div class="btns"><button id="identOn">Identify</button><button id="identOff">Stop identify</button>
         <button id="layoutSave" class="pri">Save layout</button>
-        <button id="layoutReset" class="danger" title="Back to the default 8-section layout">Reset</button></div></div>
+        <button id="layoutReset" class="danger" title="Back to the default 10-section layout">Reset</button></div></div>
     <div class="secs" id="secBody"></div>
     <div class="head" style="margin:12px 0 0">
       <div class="btns"><button id="secAdd">+ Section</button><span class="muted" id="secTotals"></span></div>
       <label class="sw"><input type="checkbox" id="liveApply" checked>Apply count changes instantly</label>
     </div>
     <p class="muted" style="margin-top:12px">1 pixel = one 10 cm segment. The list order is the order along the data
-      chain. Ceiling pieces run clockwise seen from above, edges top → bottom. <b>Reversed</b>: turn on for a piece
+      chain. Ceiling and floor pieces run clockwise seen from above, edges top → bottom. <b>Reversed</b>: turn on for a piece
       mounted the other way round (data arrows pointing backwards); the driver flips it so you don't have to rewire.
       <b>Identify</b> gives each section its own color with a white first pixel.</p>
   </div>
@@ -276,7 +276,7 @@ progress{width:100%;accent-color:var(--acc)}
       <label for="sCdThenOn">Hold after GO</label><div><input type="checkbox" id="sCdThenOn">
         <span class="muted">off = back to what was showing</span></div>
     </div>
-    <p class="muted" style="margin:12px 0">Start until “warn at”, Warn until 0, GO flashes, then After GO.</p>
+    <p class="muted" style="margin:12px 0">Start (breathing) until “warn at”, Warn (fast flash) until 0, GO flashes, then After GO.</p>
     <button id="sSave" class="pri">Save LED + countdown settings</button>
   </div>
 
@@ -394,11 +394,13 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ── Arena preview ────────────────────────────────────────────────────────
 // Oblique box: ceiling (top face) and floor (dashed). Known section names are
 // placed on the box; anything else is drawn as a row underneath.
+// GEO: [from corner, to corner, level] — level 0 = ceiling, 1 = edge (top → floor), 2 = floor.
 const C = {nw: [95, 22], ne: [305, 22], se: [255, 92], sw: [35, 92]};
 const DROP = 125;
 const GEO = {
   ceil_n: ['nw', 'ne', 0], ceil_e: ['ne', 'se', 0], ceil_s: ['se', 'sw', 0], ceil_w: ['sw', 'nw', 0],
   edge_ne: ['ne', 'ne', 1], edge_se: ['se', 'se', 1], edge_sw: ['sw', 'sw', 1], edge_nw: ['nw', 'nw', 1],
+  floor_e: ['ne', 'se', 2], floor_w: ['sw', 'nw', 2],
 };
 function drawArena() {
   const svg = $('arena'), ns = 'http://www.w3.org/2000/svg';
@@ -423,7 +425,7 @@ function drawArena() {
       r.onclick = () => pickTarget(s.name);
       $('rows').appendChild(r); return;
     }
-    const a = C[g[0]], b = g[2] ? f(g[1]) : C[g[1]];
+    const a = g[2] === 2 ? f(g[0]) : C[g[0]], b = g[2] ? f(g[1]) : C[g[1]];
     const grp = (s.name === 'edge_nw' ? back : secs).appendChild(el('g', {class: 'sec'}));
     grp.onclick = () => pickTarget(s.name);
     grp.appendChild(el('line', {x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#262b35', 'stroke-width': 9, 'stroke-linecap': 'round'}));
@@ -456,7 +458,7 @@ const Q = {
   off:   () => [{type: 'off', label: 'off'}],
   white: () => [{type: 'solid', color: 'white', label: 'white'}],
   rainbow: () => [{type: 'effect', fx: 'rainbow', period: 6000, label: 'rainbow'}],
-  ko:    () => [{type: 'countdown', seconds: 10, warnAt: 3, high: 'yellow', warn: 'red', go: 'red', then: 'red', label: '10s count'}],
+  ko:    () => [{type: 'countdown', seconds: 10, warnAt: 3, high: 'yellow', warn: 'red', go: 'red', then: 'red', style: 'solid', label: '10s count'}],
   redFault:  () => fault('red'),
   blueFault: () => fault('blue'),
   redWins:   () => wins('red', 'red'),
@@ -502,7 +504,7 @@ function onState(m) {
   if (cd) {
     big.style.display = 'flex';
     big.textContent = cd.phase === 'go' ? 'GO!' : cd.secondsLeft;
-    big.style.color = {high: '#ff5252', warn: '#ff9100', go: '#69f0ae'}[cd.phase];
+    big.style.color = {high: '#ff5252', warn: '#ffd740', go: '#69f0ae'}[cd.phase];
   } else big.style.display = 'none';
 }
 function onStatus(m) {
@@ -544,7 +546,7 @@ function onConfig(m) {
   $('sBoot').innerHTML = m.bootScenes.map(b => `<option>${esc(b)}</option>`).join(''); $('sBoot').value = s.bootScene;
   $('sCdSec').value = cd.seconds; $('sCdWarn').value = cd.warnAt; $('sCdGo').value = cd.goMs;
   const hex = (v, d) => /^#[0-9a-f]{6}$/i.test(v) ? v : d;   // a missing value must not turn an input black
-  $('sCdHigh').value = hex(cd.high, '#ff0000'); $('sCdWarnC').value = hex(cd.warn, '#ff6a00');
+  $('sCdHigh').value = hex(cd.high, '#ff0000'); $('sCdWarnC').value = hex(cd.warn, '#ffc800');
   $('sCdGoC').value = hex(cd.go, '#00ff00');
   $('sCdThenOn').checked = cd.then !== 'none'; $('sCdThen').value = hex(cd.then, '#00ff00');
   $('wSsid').value = m.wifi.ssid; const st = m.wifi.static;
@@ -615,7 +617,7 @@ function live() { if ($('liveApply').checked) { clearTimeout(liveT); liveT = set
 $('secAdd').onclick = () => { secModel.push({id: uid++, name: 'sec' + (secModel.length + 1), count: 6, rev: false}); renderSetup(); };
 $('grpAdd').onclick = () => { grpModel.push({name: 'group' + (grpModel.length + 1), members: new Set()}); renderGroups(); };
 $('layoutSave').onclick = () => { if (send(layoutPayload())) toast('Layout saved'); };
-$('layoutReset').onclick = () => confirm('Reset to the default 8-section layout?') && send({type: 'reset_layout'});
+$('layoutReset').onclick = () => confirm('Reset to the default 10-section layout?') && send({type: 'reset_layout'});
 $('identOn').onclick = () => send({type: 'identify', on: true});
 $('identOff').onclick = () => send({type: 'identify', on: false});
 const probe = () => send({type: 'pixel', target: $('pSec').value, index: +$('pIdx').value, color: 'white', clear: true, label: 'probe'});

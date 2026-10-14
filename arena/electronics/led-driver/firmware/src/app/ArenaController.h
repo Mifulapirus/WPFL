@@ -36,6 +36,9 @@
 #include "hardware/BuzzerController.h"
 #include "hardware/SupplyMonitor.h"
 
+// Name of the last reset cause ("power_on", "panic", "task_wdt", "brownout"…).
+const char* resetReasonName();
+
 // Persisted LED + countdown settings (NVS "leds"/"settings").
 struct LedSettings {
     uint16_t magic;
@@ -160,7 +163,7 @@ private:
     void defaultSettings();
     void applyBootScene();
     void startCountdown(SectionMask mask, uint32_t ms, uint32_t warnMs, uint16_t goMs,
-                        RGB high, RGB warn, RGB go, bool hasThen, RGB then);
+                        RGB high, RGB warn, RGB go, bool hasThen, RGB then, bool pulse);
 
     // ── Loop helpers ─────────────────────────────────────────────────────────
     void sendDoc(uint32_t id, JsonDocument& doc);

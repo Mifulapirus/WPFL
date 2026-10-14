@@ -28,9 +28,11 @@ static void testColor() {
 
 static void testLayout(ArenaLayout& L) {
     L.setDefaults();
-    CHECK(L.numSections() == 8);
-    CHECK(L.total() == 72);
+    CHECK(L.numSections() == 10);
+    CHECK(L.total() == 96);
     CHECK(L.start(1) == 12 && L.count(1) == 6);           // edge_ne after ceil_n
+    CHECK(L.start(8) == 72 && L.count(8) == 12);          // floor pieces appended after edge_nw
+    CHECK(L.section(8).reversed && L.section(9).reversed && !L.section(0).reversed);
 
     SectionMask m; const char* err = nullptr;
     JsonDocument d;
@@ -40,15 +42,17 @@ static void testLayout(ArenaLayout& L) {
     CHECK(L.resolve(d["t"], m, err) && L.pixelsIn(m) == 24);
     d["t"] = "ceil_n, edge_ne";
     CHECK(L.resolve(d["t"], m, err) && m == 0b11);
+    d["t"] = "floor";
+    CHECK(L.resolve(d["t"], m, err) && m == 0b1100000000);
     d["t"] = "red";
-    CHECK(L.resolve(d["t"], m, err) && L.pixelsIn(m) == 24);
+    CHECK(L.resolve(d["t"], m, err) && L.pixelsIn(m) == 36);
     d["t"] = "all";
     CHECK(L.resolve(d["t"], m, err) && m == L.allMask());
     CHECK(L.resolve(d["missing"], m, err) && m == L.allMask());   // null → all
     d["t"] = "bogus";
     CHECK(!L.resolve(d["t"], m, err));
     JsonDocument arr; arr.add("ceil_s"); arr.add("blue");
-    CHECK(L.resolve(arr.as<JsonVariantConst>(), m, err) && L.pixelsIn(m) == 12 + 24);
+    CHECK(L.resolve(arr.as<JsonVariantConst>(), m, err) && L.pixelsIn(m) == 12 + 36);
 
     // Custom layout: reversed section; a legacy "out" field is ignored
     JsonDocument j;
@@ -98,7 +102,7 @@ static void testEngine(ArenaLayout& L) {
     // Base fill
     E.fill(all, GREEN);
     E.render(0);
-    CHECK(same(f[0], GREEN) && same(f[71], GREEN));
+    CHECK(same(f[0], GREEN) && same(f[95], GREEN));
 
     // Countdown 3 s, warn ≤ 2 s, GO flash 2000 ms, then green
     SectionMask m; const char* err; JsonDocument d; d["t"] = "all"; L.resolve(d["t"], m, err);
@@ -120,6 +124,24 @@ static void testEngine(ArenaLayout& L) {
     CHECK(!E.animating());
     E.render(6100);  CHECK(same(f[5], GREEN));              // base now green
     CHECK(ticks == "3210-1");
+
+    // Pulse style: HIGH breathes (full on each whole second), WARN flashes every 50 ms
+    const RGB YEL(255, 200, 0);
+    Effect pc = cd; pc.cdPulse = true; pc.cdWarn = YEL;
+    E.fill(all, BLACK);
+    E.addEffect(pc, 7000);
+    E.render(7000);  CHECK(f[5].r >= 250 && f[5].g == 0);   // 3 s left → full red
+    E.render(7500);  CHECK(f[5].r < 10);                    // between beeps → dark
+    E.render(7250);  CHECK(f[5].r > 60 && f[5].r < 200);    // fading
+    E.render(8000);  CHECK(same(f[5], YEL));                // 2 s left → yellow, on
+    E.render(8060);  CHECK(same(f[5], BLACK));              // off
+    E.render(8110);  CHECK(same(f[5], YEL));                // on again
+    E.render(9990);  CHECK(same(f[5], BLACK));              // still flashing at 10 ms left
+    E.render(10000); CHECK(same(f[5], GREEN));              // GO unchanged
+    JsonDocument pj; E.toJson(pj.to<JsonObject>(), 10000);
+    CHECK(strcmp(pj["countdown"]["style"] | "", "pulse") == 0);
+    E.render(12000); CHECK(same(f[5], GREEN));
+    ticks.clear();
 
     // Overlay fault blink on the red side for 3 s, then back to green
     d["t"] = "red"; SectionMask red; L.resolve(d["t"], red, err);

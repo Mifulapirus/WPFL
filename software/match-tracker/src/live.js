@@ -31,7 +31,7 @@ export const LED = {
   fault:   side => [{ type: 'effect', fx: 'blink', target: side, color: 'yellow', color2: 'off', period: 300,
                       duration: 3000, overlay: true }],
   count:   (side, s) => [{ type: 'countdown', target: side, seconds: s, warnAt: 3, high: 'yellow', warn: 'red',
-                           go: 'red', then: 'none', label: 'count' }],
+                           go: 'red', then: 'none', style: 'solid', label: 'count' }],
   cancel:  side => [{ type: 'cancel', target: side }],
   wins:    side => [{ type: 'solid', color: side, label: `${side} wins` },
                     { type: 'effect', fx: 'sparkle', color: 'white', color2: side, period: 90, duration: 6000, overlay: true }],

@@ -15,8 +15,8 @@ low-latency **WebSocket API** so the match tracker on Capek can run the lights a
 
 - **Per-pixel control** (1 pixel = one 10 cm WS2811 segment), **sections** and **groups**, all sized at runtime —
   cut the strip, then dial in the counts from your phone. Up to 16 sections / 600 pixels on one data line.
-- **Competition buttons:** STOP (red), PAUSE (yellow), FIGHT (green), **COUNTDOWN** (red → orange → flashing green
-  GO → green), 10 s incapacitation count, robot **Fault** and **Wins** per side, work light, rainbow.
+- **Competition buttons:** STOP (red), PAUSE (yellow), FIGHT (green), **COUNTDOWN** (breathing red → fast-flashing
+  yellow → flashing green GO → green), 10 s incapacitation count, robot **Fault** and **Wins** per side, work light, rainbow.
 - **Effects:** blink, breathe, rainbow, chase, sparkle, progress bar, identify — on any target, optionally as
   timed overlays that fall back to what was showing.
 - **Live preview** of the arena in the web page (mirrors the real LEDs).
@@ -56,7 +56,7 @@ Later updates: build, then Settings → System → *Update firmware* with `firmw
 | Button | Does |
 |---|---|
 | **STOP** / **PAUSE** / **FIGHT** | Whole arena red / yellow / green |
-| **COUNTDOWN** | `3` red → `2`,`1` orange → **GO** flashing green 2 s → solid green (all editable in Settings) |
+| **COUNTDOWN** | `3` red, breathing → `2`,`1` yellow, flashing fast → **GO** flashing green 2 s → solid green (times and colors editable in Settings) |
 | **10 s COUNT** | Rule E.4 incapacitation count: yellow → red for the last 3 s → red |
 | **Fault** (red/blue) | That robot's side blinks yellow for 3 s, then returns to the previous scene |
 | **Wins** (red/blue) | Arena turns the winner's color with a 6 s sparkle |
@@ -142,7 +142,7 @@ number that tells you how close it came.
 cd firmware && pio pkg install && sh test_host/run.sh     # needs a host g++ (C++14)
 ```
 
-72 checks covering layout validation, target resolution, countdown timing, overlays, layering and slot limits.
+86 checks covering layout validation, target resolution, countdown timing, overlays, layering and slot limits.
 
 ---
 

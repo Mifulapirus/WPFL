@@ -71,7 +71,9 @@ bool LedOutput::begin() {
     // changes it. WS2811 needs the line low between frames to latch (and a high
     // idle would merge into the next frame's first bit). Applied at the next
     // transaction's config sync.
+#if CONFIG_IDF_TARGET_ESP32C3
     GPSPI2.ctrl.d_pol = 0;
+#endif   // classic ESP32 has no such bit; MOSI idles low in mode 0
     return true;
 }
 

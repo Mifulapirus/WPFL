@@ -52,8 +52,9 @@ void WiFiManager::begin() {
     WiFi.setHostname(_hostname.c_str());
 
     if (!_ssid.isEmpty() && connectSta(STA_CONNECT_TIMEOUT_MS)) {
-        Serial.printf("[WiFi] Connected to '%s' — IP %s, RSSI %d dBm\n",
-                      _ssid.c_str(), WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        Serial.printf("[WiFi] Connected to '%s' — IP %s, RSSI %d dBm, TX %.1f dBm\n",
+                      _ssid.c_str(), WiFi.localIP().toString().c_str(), WiFi.RSSI(),
+                      WiFi.getTxPower() / 4.0f);
     } else {
         startAp(!_ssid.isEmpty());   // keep retrying STA if a network is configured
     }
@@ -78,6 +79,9 @@ bool WiFiManager::connectSta(uint32_t timeoutMs) {
         }
     }
     WiFi.begin(_ssid.c_str(), _pass.c_str());
+#ifdef WIFI_TX_POWER
+    WiFi.setTxPower(WIFI_TX_POWER);
+#endif
     uint32_t t0 = millis();
     while (WiFi.status() != WL_CONNECTED) {
         if (millis() - t0 > timeoutMs) {
@@ -95,6 +99,9 @@ void WiFiManager::startAp(bool keepSta) {
     WiFi.mode(keepSta ? WIFI_AP_STA : WIFI_AP);
     delay(100);
     bool ok = WiFi.softAP(_apSsid.c_str(), _apPass.c_str());
+#ifdef WIFI_TX_POWER
+    WiFi.setTxPower(WIFI_TX_POWER);
+#endif
     _apActive = ok;
     if (!ok) {
         Serial.println("[WiFi] ERROR: softAP() failed (password must be 8–63 chars).");

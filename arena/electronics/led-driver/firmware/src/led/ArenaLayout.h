@@ -16,7 +16,8 @@
 //
 // LOGICAL vs PHYSICAL ORDER
 //   Logical pixel index = sections concatenated in list order, each running
-//   from its own index 0 (ceiling: clockwise seen from above; edges: top→down).
+//   from its own index 0 (ceiling + floor: clockwise seen from above;
+//   edges: top→down).
 //   Physical order = position on the single data chain. Sections are chained
 //   in list order; "reversed" flips a section in place.
 //   → The section list order IS the wiring order.
@@ -54,7 +55,7 @@ struct LayoutCfg {
 
 class ArenaLayout {
 public:
-    // Load from NVS, falling back to the default 4×ceiling + 4×edge layout.
+    // Load from NVS, falling back to the default 4×ceiling + 4×edge + 2×floor layout.
     void begin();
 
     // Persist the current layout to NVS. Call from loop(), not a network callback.

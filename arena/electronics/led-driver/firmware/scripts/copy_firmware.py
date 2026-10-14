@@ -44,7 +44,10 @@ def copy_firmware(source, target, env):  # noqa: ARG001
 
     major, minor, patch, build = _read_version(src_dir)
     version_str = "{}.{}.{}.{}".format(major, minor, patch, build)
-    dest_name   = "wpfl-arena-led-{}.bin".format(version_str)
+    # Only the Rotato (ESP32-C3) build keeps the plain name; other boards get a
+    # suffix so their image can never be mistaken for it and OTA-flashed.
+    suffix      = "" if env["PIOENV"] == "arena-led" else "-" + env["PIOENV"]
+    dest_name   = "wpfl-arena-led-{}{}.bin".format(version_str, suffix)
     bin_dir     = os.path.join(project_dir, "bin")
     os.makedirs(bin_dir, exist_ok=True)
     dest_path   = os.path.join(bin_dir, dest_name)

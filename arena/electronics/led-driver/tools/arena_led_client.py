@@ -93,6 +93,7 @@ async def main():
     s = sub.add_parser("off"); s.add_argument("--target")
     s = sub.add_parser("countdown")
     s.add_argument("--seconds", type=float); s.add_argument("--warn-at", type=float); s.add_argument("--target")
+    s.add_argument("--style", choices=("pulse", "solid"))
     s = sub.add_parser("effect"); s.add_argument("fx")
     for a in ("--target", "--color", "--color2"):
         s.add_argument(a)
@@ -130,6 +131,7 @@ async def main():
                 cmd = {"type": "countdown"}
                 if args.seconds is not None: cmd["seconds"] = args.seconds
                 if args.warn_at is not None: cmd["warnAt"] = args.warn_at
+                if args.style is not None: cmd["style"] = args.style
             else:
                 cmd = {"type": "effect", "fx": args.fx, "overlay": args.overlay}
                 for k in ("color", "color2", "period", "duration", "value"):

@@ -20,7 +20,8 @@ So "individually addressable" means **per 10 cm segment**. The 63 LEDs inside on
 |---|---|---|---|
 | Ceiling × 4 | 4 ft = 121.9 cm | 120 cm | **12** each |
 | Vertical edge × 4 | 2 ft = 61.0 cm | 60 cm | **6** each |
-| **Total** | 24 ft | 7.2 m | **72 px ≈ 86 W** max (full white) |
+| Floor edge × 2 (E, W) | 4 ft = 121.9 cm | 120 cm | **12** each |
+| **Total** | 32 ft | 9.6 m | **96 px ≈ 115 W** max (full white) |
 
 Your real counts go into the web UI (Setup tab) after cutting. Nothing in the firmware needs recompiling.
 
@@ -42,14 +43,28 @@ the controller sits at the **NW top corner** and this order:
 
  Chain (one data line, output A / J5):
 
-   DIN@NW → ceil_n → edge_ne ↓↺ → ceil_e → edge_se ↓↺ → ceil_s → edge_sw ↓↺ → ceil_w → edge_nw ↓ (end)
+   DIN@NW → ceil_n → edge_ne ↓↺ → ceil_e → edge_se ↓↺ → ceil_s → edge_sw ↓↺ → ceil_w → edge_nw ↓
+          → floor_w (NW→SW) ⇢ floor_e (SE→NE) (end)
 
    ↓  data runs down the edge strip (top → bottom)
    ↺  data return wire (data + GND, ~2 ft) back up the same edge to the next ceiling piece's DIN
+   ⇢  data jumper (data + GND, ~4 ft) along the south floor edge, SW → SE
+
+ Floor level (top view), after edge_nw reaches the floor at NW:
+
+            NW ●                          ● NE
+               │                          ▲
+            floor_w                    floor_e
+               ▼                          │
+            SW ●⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢● SE
 ```
 
-That keeps every jumper short, along a corner post, and out of the robots' reach. Ceiling pieces run clockwise seen from above; edges run top → bottom. If you mount any piece the
-other way round, tick **rev** for it in Setup — no rewiring needed.
+That keeps every jumper short, along a corner post, and out of the robots' reach. Ceiling and floor pieces run
+clockwise seen from above (floor pixel *i* sits under ceiling pixel *i*); edges run top → bottom. The path above
+lays both floor pieces against that direction, so the default layout has **rev** ticked for `floor_w` and
+`floor_e`. If you mount any piece the other way round, toggle **rev** for it in Setup — no rewiring needed.
+
+The floor pieces come last in the chain, so adding them doesn't change any ceiling or edge pixel numbers.
 
 There is a single data output (J5). The order in the Setup list is the order along the chain.
 
@@ -58,7 +73,8 @@ There is a single data output (J5). The order in the Setup list is the order alo
 ```
  120 V AC ─► 24 V PSU (≥ 5 A / 120 W) ─► 5 A fuse ─►┬─ 18 AWG power bus (+24 V / GND) around the top perimeter
                                                      │      tap into the +24 V/GND pads at the start of each piece
-                                                     │      (8 taps; each piece draws ≤ 0.6 A)
+                                                     │      (10 taps; each piece draws ≤ 0.6 A;
+                                                     │       run a +24 V/GND drop down to the floor pieces)
                                                      │
                                                      └─► 24 V → 5 V USB buck ─► Rotato USB-C   (option A, simplest)
                                                          24 V → 12 V buck   ─► Rotato battery terminal (option B)
@@ -71,7 +87,8 @@ There is a single data output (J5). The order in the Setup list is the order alo
 - Put a **1000 µF / 35 V** electrolytic across +24 V/GND where the bus starts.
 - Each strip piece is short; 18 AWG for the bus and 22 AWG for taps is plenty.
 - The firmware caps estimated LED power at **100 W** by default (Settings → *Max watts*). Set it to ~80 % of your
-  PSU rating if you use a smaller supply.
+  PSU rating. With the floor pieces, full white (≈ 115 W) exceeds 100 W, so the cap dims it slightly. To lift the
+  cap, use a ≥ 6.5 A / 150 W PSU and raise *Max watts* to ~120.
 
 ## Data signal
 
@@ -85,6 +102,28 @@ Rotato J5 GND ──────────────────────
 - Keep controller → first pixel short (< 1 m). Mount the Rotato board at the NW top corner.
 - 330 Ω series resistor near the driver dampens ringing.
 - Use only the **signal + GND** pins of J5, never the centre +V pin.
+
+## Alternate board: classic ESP32 dev board (WROOM-32) — test only
+
+Used to compare WiFi range with the Rotato/C3 board. It is **not** on the Rotato PCB, so wire it by hand. Build
+and flash with `pio run -e wroom-test -t upload --upload-port COMx` (the plain `pio run` targets the C3 only).
+
+| Function | C3 (Rotato) | WROOM-32 | Notes |
+|---|---|---|---|
+| LED data out | GPIO1 (J5) | **GPIO23** | Through the 74AHCT125 + 330 Ω, same as above |
+| Supply sense (optional) | GPIO0 | **GPIO34** | ADC1, input-only. Same 39 K / 10 K divider; max 15 V at the divider |
+| START button (to GND) | GPIO5 (J8) | **GPIO25** | Internal pull-up |
+| STOP button (to GND) | GPIO6 (J9) | **GPIO26** | Internal pull-up |
+| Buzzer (passive) | GPIO7 (JP1) | **GPIO27** | |
+| BOOT button | GPIO9 | **GPIO0** | The board's BOOT button: short = countdown, hold 3 s = forget WiFi |
+| Spare | GPIO3, 4 | GPIO16, 17 | Unused |
+
+- GND is common as usual. Power it from USB for the test; it has no battery input.
+- **Brownout resets:** a weak USB cable, hub or port makes the board reset in a loop ("Brownout detector was
+  triggered") as soon as WiFi starts. Use a short, thick cable straight into the PC, or a phone charger.
+- No USB-C native port: Serial goes through the board's CH340 chip, so the build leaves the C3's USB-CDC flags off.
+- The supply sense is on GPIO34 (ADC1) on purpose: the ADC2 pins (GPIO0, 2, 4, 12–15, 25–27) can't do analog reads
+  while WiFi is on. Using them as plain digital pins (buttons, buzzer) is fine. GPIO0 is also the boot strap pin.
 
 ## Optional physical buttons
 
@@ -101,14 +140,14 @@ They work even with no WiFi. Internal pull-ups are used, so leaving them unconne
 | Qty | Part |
 |---|---|
 | 1 | Rotato PCB with ESP32-C3 Super Mini (JP1 closed for the buzzer) |
-| 1 | PAUTIX 24 V COB WS2811 strip, 10 m roll (7.2 m used) |
+| 1 | PAUTIX 24 V COB WS2811 strip, 10 m roll (9.6 m used) |
 | 1 | 24 V ≥ 5 A power supply |
 | 1 | 5 A inline fuse + holder |
 | 1 | 24 V → 5 V USB-C buck **or** 24 V → 12 V buck |
 | 1 | 74AHCT125 level shifter (+ 0.1 µF decoupling) |
 | 1 | 330 Ω resistor, 1000 µF 35 V capacitor |
 | ~6 m | 18 AWG red/black (power bus) |
-| ~4 m | 2-core twisted 22–24 AWG (data return wires) |
+| ~5.5 m | 2-core twisted 22–24 AWG (data return wires + floor jumper) |
 | 2 | Momentary buttons (optional START/STOP) |
 | — | 12 mm 3-pin strip connectors or solder + heat-shrink |
 

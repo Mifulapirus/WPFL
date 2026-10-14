@@ -8,6 +8,7 @@
 
 #include "ArenaController.h"
 #include <Preferences.h>
+#include <esp_system.h>
 #include "version.h"
 #include "version_build.h"
 
@@ -19,6 +20,23 @@ static const uint32_t SAVE_DEBOUNCE_MS = 1500;
 static const char* const BOOT_SCENES[] = {"off", "white", "rainbow", "red", "yellow", "green", "blue"};
 static const uint8_t NUM_BOOT_SCENES   = sizeof(BOOT_SCENES) / sizeof(BOOT_SCENES[0]);
 static const char* const COLOR_ORDERS[] = {"RGB", "RBG", "GRB", "GBR", "BRG", "BGR"};
+
+// Why the chip last restarted — "panic" / "task_wdt" / "brownout" mean trouble.
+const char* resetReasonName() {
+    switch (esp_reset_reason()) {
+        case ESP_RST_POWERON:   return "power_on";
+        case ESP_RST_SW:        return "software";
+        case ESP_RST_PANIC:     return "panic";
+        case ESP_RST_INT_WDT:   return "int_wdt";
+        case ESP_RST_TASK_WDT:  return "task_wdt";
+        case ESP_RST_WDT:       return "wdt";
+        case ESP_RST_BROWNOUT:  return "brownout";
+        case ESP_RST_DEEPSLEEP: return "deep_sleep";
+        case ESP_RST_EXT:       return "external";
+        case ESP_RST_SDIO:      return "sdio";
+        default:                return "unknown";
+    }
+}
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
@@ -253,7 +271,7 @@ void ArenaController::applyBootScene() {
 }
 
 void ArenaController::startCountdown(SectionMask mask, uint32_t ms, uint32_t warnMs, uint16_t goMs,
-                                     RGB high, RGB warn, RGB go, bool hasThen, RGB then) {
+                                     RGB high, RGB warn, RGB go, bool hasThen, RGB then, bool pulse) {
     Effect e;
     e.type      = Fx::Countdown;
     e.mask      = mask;
@@ -265,6 +283,7 @@ void ArenaController::startCountdown(SectionMask mask, uint32_t ms, uint32_t war
     e.cdGo      = go;
     e.cdHasThen = hasThen;
     e.cdThen    = then;
+    e.cdPulse   = pulse;
     _engine.addEffect(e, millis());
 }
 
@@ -274,7 +293,7 @@ void ArenaController::startDefaultCountdown(const char* label) {
     lock();
     const LedSettings& s = _settings;
     startCountdown(_layout.allMask(), s.cdMs, s.cdWarnMs, s.cdGoMs, s.cdHigh, s.cdWarn, s.cdGo,
-                   s.cdHasThen, s.cdThen);
+                   s.cdHasThen, s.cdThen, CD_DEFAULT_PULSE);
     strlcpy(_label, label, sizeof(_label));
     markChanged();
     unlock();
@@ -497,8 +516,15 @@ bool ArenaController::handleLed(const char* type, JsonObjectConst cmd, JsonDocum
             else if (colorArg(cmd["then"], then, then)) hasThen = true;
             else { err = "invalid then color"; return true; }
         }
+        bool pulse = CD_DEFAULT_PULSE;
+        if (!cmd["style"].isNull()) {
+            const char* st = cmd["style"].as<const char*>();
+            if (st && !strcasecmp(st, "pulse"))      pulse = true;
+            else if (st && !strcasecmp(st, "solid")) pulse = false;
+            else { err = "style must be pulse or solid"; return true; }
+        }
         startCountdown(mask, (uint32_t)(sec * 1000.0f + 0.5f), (uint32_t)(warn * 1000.0f + 0.5f),
-                       (uint16_t)goMs, high, warnC, go, hasThen, then);
+                       (uint16_t)goMs, high, warnC, go, hasThen, then, pulse);
         setLabel(cmd, "countdown");
         markChanged();
         return true;
@@ -704,6 +730,7 @@ void ArenaController::buildStatus(JsonDocument& doc) {
     doc["fw"]     = FW_VERSION_FULL;
     doc["proto"]  = PROTOCOL_VERSION;
     doc["uptime"] = millis() / 1000;
+    doc["reset"]  = resetReasonName();
     JsonObject h  = doc["heap"].to<JsonObject>();
     h["free"]     = ESP.getFreeHeap();
     h["min"]      = ESP.getMinFreeHeap();
