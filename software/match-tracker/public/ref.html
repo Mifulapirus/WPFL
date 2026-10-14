@@ -133,7 +133,11 @@
   </div>
   <div class="card">
     <div class="head"><h2 id="robotsTitle">Robots</h2>
-      <div class="seg" id="rbMode"><button data-m="edit" class="sel">Edit</button><button data-m="cards">Card preview</button></div></div>
+      <div class="btns"><button class="danger" id="resetAll" title="Every robot's results back to not fought (pairings stay)">Reset all results</button>
+      <div class="seg" id="rbMode"><button data-m="edit" class="sel">Edit</button><button data-m="cards">Card preview</button></div></div></div>
+    <p class="muted mb" id="rbHistHelp">The record button on a robot (e.g. <b>2–1</b>) opens its fight history right below it:
+      <b>Change…</b> corrects a winner or method, <b>Reset</b> sends a fight back to the queue (fight it again or record it by
+      hand). Byes can't be reset — delete the round instead.</p>
     <div id="robotList"></div>
     <div class="hide" id="cardView">
       <p class="muted mb">Exactly what viewers see on the public <b>Robots</b> tab — also while the event is a draft. Click a card to turn it over; ✎ edits that robot.</p>

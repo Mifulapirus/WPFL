@@ -23,7 +23,7 @@ WPFL/
 │       │   └── rotato-pcb/        Reference for the Rotato ESP32-C3 board we reuse
 │       └── led-driver/            ★ Arena LED driver: firmware, web UI, wiring, test client
 ├── software/
-│   └── match-tracker/             Live match tracking website + referee console (wpfl-asmbly.thehomelab.dev)
+│   └── match-tracker/             Live match tracking website + referee console + OBS graphics (wpfl-asmbly.thehomelab.dev)
 ├── docs/
 │   ├── rules.md                   Event rules summary (official: wpfl.thehomelab.dev)
 │   └── protocols/                 Interfaces between components

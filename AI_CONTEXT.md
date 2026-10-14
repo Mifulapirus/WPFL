@@ -22,7 +22,7 @@
 | `arena/electronics/led-driver/firmware/` | PlatformIO project — arena LED driver |
 | `arena/electronics/led-driver/tools/arena_led_client.py` | Reference WS client / latency tester |
 | `arena/electronics/led-driver/docs/wiring.md` | Strip, power, data wiring, BOM |
-| `software/match-tracker/` | Node match tracker: Swiss brackets, referee console, public viewer, LED uplink endpoint (Capek-Web) |
+| `software/match-tracker/` | Node match tracker: Swiss brackets, referee console, public viewer, OBS broadcast graphics (`/obs`), LED uplink endpoint (Capek-Web) |
 | `docs/protocols/arena-led-websocket.md` | **LED driver API contract** |
 | `docs/rules.md` | Rules summary (official: wpfl.thehomelab.dev) |
 

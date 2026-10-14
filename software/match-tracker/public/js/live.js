@@ -23,12 +23,14 @@ export const METHOD = { ko: 'KO', judges: 'Judges', forfeit: 'Forfeit', bye: 'By
 
 // ── Connection ─────────────────────────────────────────────────────────────
 // onState(msg) gets every state push. now() = estimated server time.
-export function connect({ onState, onStatus }) {
+export function connect({ onState, onStatus, ref = false }) {
   let ws, offset = 0, seq = 0, build = null;
   const pending = new Map();
 
   function open() {
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    // Only the referee console asks for the referee feed; every other page reads the public
+    // one, even in a browser that holds the referee cookie.
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws${ref ? '?ref=1' : ''}`);
     ws.onopen = () => { onStatus?.(true); syncTime(); };
     ws.onclose = () => {
       onStatus?.(false);
@@ -280,13 +282,13 @@ export function battlecards(d, { showHidden = false, edit = false } = {}) {
           <div class="bc-type" title="${type}">${type}</div>
           ${cardText(r.bio, 'No intel on this robot yet.')}
           ${stats}
-          <footer class="bc-foot"><span>${evName}</span><span class="bc-turn" aria-hidden="true">↻</span><span>${num}</span></footer>
+          <footer class="bc-foot"><span>${evName}</span><span>${num}</span></footer>
         </div></section>
         <section class="bc-face bc-back"><div class="bc-frame">
           <div class="bc-art2">${art2}<div class="bc-team"><small>${teamSub}</small><b title="${teamName}">${teamName}</b></div></div>
           ${cardText(r.teamBio, 'No team intel yet.')}
           <div class="bc-log"><h4>Fight log</h4>${log}</div>
-          <footer class="bc-foot"><span>${esc(r.name)}</span><span class="bc-turn" aria-hidden="true">↻</span><span>${num}</span></footer>
+          <footer class="bc-foot"><span>${esc(r.name)}</span><span>${num}</span></footer>
         </div></section>
       </div>
     </article>`;

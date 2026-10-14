@@ -123,3 +123,38 @@ test('queue reports rest time since each robot last fought', () => {
   assert.equal(q.length, 2);
   assert.ok(q.every(x => x.restRed === 60_000 && x.restBlue === 60_000));
 });
+
+test('fight history: change a result in place, reset one robot\'s results', () => {
+  const doc = event(4);
+  doc.event.rounds = 2;
+  T.generateRound(doc, rng());
+  playRound(doc, 10_000);
+  const f = doc.fights.find(x => x.round === 1);
+  const loser = f.winner === 'red' ? f.blue : f.red;
+  const row = id => T.standings(doc).find(s => s.id === id);
+  assert.equal(row(loser).wins, 0);
+  T.setResult(doc, { id: f.id, winner: f.winner === 'red' ? 'blue' : 'red', method: 'judges' });   // corrected
+  assert.equal(row(loser).wins, 1);
+  assert.equal(f.method, 'judges');
+  T.generateRound(doc, rng(2));
+  playRound(doc, 20_000);
+  assert.equal(T.resetRobotResults(doc, loser), 2);
+  assert.ok(doc.fights.filter(x => x.red === loser || x.blue === loser).every(x => x.status === 'pending'));
+  assert.equal(row(loser).played, 0);
+  assert.equal(T.resetRobotResults(doc, loser), 0);
+  doc.live = { fightId: f.id };
+  T.setResult(doc, { id: f.id, winner: 'red', method: 'ko' });
+  assert.throws(() => T.resetRobotResults(doc, f.red), /loaded/);
+});
+
+test('reset all results keeps pairings and byes', () => {
+  const doc = event(5);
+  doc.event.rounds = 2;
+  T.generateRound(doc, rng());
+  playRound(doc);
+  const fights = doc.fights.length;
+  assert.equal(T.resetAllResults(doc), 2);
+  assert.equal(doc.fights.length, fights);
+  assert.equal(doc.fights.filter(f => f.status === 'done').length, 1, 'the bye stays');
+  assert.ok(T.standings(doc).every(s => s.played === 0));
+});

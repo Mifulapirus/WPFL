@@ -339,6 +339,25 @@ export function resetResult(doc, id) {
                      faults: { red: 0, blue: 0 } });
 }
 
+// Clear every result of one robot (its fight history): the fights go back to
+// pending, to be fought again or recorded by hand. Byes stay (delete the round
+// instead). Returns how many results were cleared.
+export function resetRobotResults(doc, id) {
+  robotById(doc, id) || fail('Unknown robot');
+  const fights = doc.fights.filter(f => (f.red === id || f.blue === id) && f.status === 'done' && f.method !== 'bye');
+  if (fights.some(f => isLive(doc, f))) fail('One of its fights is loaded — unload it first');
+  for (const f of fights) resetResult(doc, f.id);
+  return fights.length;
+}
+
+// Clear every result of the event (byes stay). Pairings are kept.
+export function resetAllResults(doc) {
+  const fights = doc.fights.filter(f => f.status === 'done' && f.method !== 'bye');
+  if (fights.some(f => isLive(doc, f))) fail('A fight is loaded — unload it first');
+  for (const f of fights) resetResult(doc, f.id);
+  return fights.length;
+}
+
 // Pending fights in running order, with each robot's rest so far (ms) — the
 // referee sees who is fresh enough for the next fight.
 export function queue(doc, now = Date.now()) {
