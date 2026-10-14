@@ -282,13 +282,13 @@ export function battlecards(d, { showHidden = false, edit = false } = {}) {
           <div class="bc-type" title="${type}">${type}</div>
           ${cardText(r.bio, 'No intel on this robot yet.')}
           ${stats}
-          <footer class="bc-foot"><span>${evName}</span><span class="bc-turn" aria-hidden="true">↻</span><span>${num}</span></footer>
+          <footer class="bc-foot"><span>${evName}</span><span>${num}</span></footer>
         </div></section>
         <section class="bc-face bc-back"><div class="bc-frame">
           <div class="bc-art2">${art2}<div class="bc-team"><small>${teamSub}</small><b title="${teamName}">${teamName}</b></div></div>
           ${cardText(r.teamBio, 'No team intel yet.')}
           <div class="bc-log"><h4>Fight log</h4>${log}</div>
-          <footer class="bc-foot"><span>${esc(r.name)}</span><span class="bc-turn" aria-hidden="true">↻</span><span>${num}</span></footer>
+          <footer class="bc-foot"><span>${esc(r.name)}</span><span>${num}</span></footer>
         </div></section>
       </div>
     </article>`;

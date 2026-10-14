@@ -238,11 +238,10 @@ td .medal{display:inline-flex;vertical-align:middle}
 .bc-stats div{display:grid;justify-items:center;padding:3px 2px 2px;border-radius:7px;background:#ffffff0a;border:1px solid #ffffff14;min-width:0}
 .bc-stats b{font-size:.98rem;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
 .bc-stats span{font-size:.5rem;letter-spacing:.6px;color:var(--mut)}
-.bc-foot{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;font-size:.62rem;color:var(--mut);
+.bc-foot{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;font-size:.62rem;color:var(--mut);
   letter-spacing:.6px;text-transform:uppercase;border-top:1px solid #ffffff14;padding-top:5px;margin-top:auto}
 .bc-foot span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bc-foot span:last-child{text-align:right}
-.bc-turn{font-size:.85rem;line-height:1;color:var(--c1);opacity:.8}
 /* back: team picture with the team name, team text, fight log */
 .bc-art2{position:relative;height:36%;border-radius:8px;overflow:hidden;border:3px solid var(--c1);
   background:repeating-linear-gradient(135deg,#ffffff08 0 10px,transparent 10px 20px),radial-gradient(circle at 70% 20%,var(--c1),var(--c2) 80%)}
