@@ -180,6 +180,15 @@
       <span class="muted">The start time drives the public countdown (your browser's timezone).</span></div>
   </div>
   <div class="card">
+    <div class="head"><h2>Rules PDF</h2><a class="btn sm" href="/rules" target="_blank" rel="noopener">Open current</a></div>
+    <div class="kv mb" id="rulesInfo"></div>
+    <div class="btns"><input type="file" id="rulesFile" accept="application/pdf,.pdf" aria-label="Rules PDF">
+      <button class="pri" id="rulesUpload">Upload new rules</button></div>
+    <p class="muted mt">Replaces the PDF at <b>wpfl.thehomelab.dev/rules</b> (and <b>/rules</b> here) straight away, for every event.
+      PDF only, max 3 MB. The replaced file is kept below — download it if you need to put it back.</p>
+    <div class="mt" id="rulesOld"></div>
+  </div>
+  <div class="card">
     <div class="head"><h2>Arena LED driver</h2><span class="chip" id="ledState">—</span></div>
     <div class="kv mb" id="ledInfo"></div>
     <div class="btns">

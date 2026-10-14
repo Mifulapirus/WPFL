@@ -5,6 +5,7 @@
 //   /ws          browser WebSocket: everyone gets public state; /ws?ref=1 + referee cookie gets the referee feed and may send commands
 //   /led         arena LED driver uplink (Bearer LED_KEY)
 //   /api/archive past events (list, read-only view, referee export)
+//   /rules       contest rules PDF (wpfl.thehomelab.dev/rules proxies here); referees replace it from /ref
 // Copyright (c) 2026 Angel Hernandez (www.thehomelab.dev) — Non-Commercial Source-Available License.
 //
 // EVENTS  draft ──publish──► published ──start──► live ──end──► past (archive)
@@ -24,10 +25,12 @@ import { Auth } from './src/auth.js';
 import * as T from './src/tournament.js';
 import { importRobots, fetchSheet } from './src/importer.js';
 import { saveImage, removeImage, MEDIA_NAME, MEDIA_TYPES } from './src/media.js';
+import { Rules } from './src/rules.js';
 
 const cfg = loadConfig();
 const store = new Store(cfg.dataDir);
 const mediaDir = path.join(cfg.dataDir, 'media');
+const rules = new Rules(path.join(cfg.dataDir, 'rules'), path.join(cfg.root, 'seed', 'WPFL-rules.pdf'));
 const led = new LedLink({ key: cfg.ledKey });
 const auth = new Auth({ password: cfg.refereePassword, secret: cfg.sessionSecret, hours: cfg.sessionHours,
                         trustProxy: cfg.trustProxy });
@@ -94,6 +97,7 @@ function refState(now) {
       events: list.map(eventInfo),
       byId: Object.fromEntries(list.map(d => [d.id, { ...eventState(d, now), robots: d.robots, importInfo: d.importInfo || null }])),
       archives: store.archives,
+      rules: rules.info(),
     },
   };
 }
@@ -245,6 +249,11 @@ const GLOBAL = {
     console.info(`[event] past event ${a.id} restored as draft ${d.id}`);
     return { id: d.id };
   },
+  // Rules PDF: data URL from the referee's browser. The old one is kept under data/rules/old.
+  'rules.upload':    a => {
+    const info = rules.save(a.data, a.name);
+    console.info(`[rules] new rules PDF "${info.name}" (${info.size} bytes)`);
+  },
   'archive.delete':  a => {
     const name = store.archives.find(x => x.id === a.id)?.name;
     store.deleteArchive(a.id);
@@ -348,6 +357,19 @@ const server = http.createServer(async (req, res) => {
         res.end(data);
       });
     }
+    // Rules PDF: current for everyone (no-cache: a new upload shows at once); replaced ones for referees only.
+    const rp = req.method === 'GET' && /^\/rules(?:\/old\/([^/]+))?$/.exec(p);
+    if (rp) {
+      if (rp[1] && !auth.isReferee(req)) return json(res, req, 401, { error: 'Referee login required' });
+      const file = rules.file(rp[1] || '');
+      if (!file) return notFound(res, req);
+      return fs.readFile(file, (err, data) => {
+        if (err) return notFound(res, req);
+        headers(res, req, 'application/pdf');
+        res.setHeader('Content-Disposition', `${rp[1] ? 'attachment' : 'inline'}; filename="${rp[1] || rules.meta.name}"`);
+        res.end(data);
+      });
+    }
     if (req.method === 'GET' && p === '/healthz') return json(res, req, 200, { ok: true, led: led.connected });
     if (req.method === 'GET' && p === '/api/state') return json(res, req, 200, publicState(Date.now()));
     if (req.method === 'GET' && p === '/api/session') return json(res, req, 200, { referee: auth.isReferee(req) });
@@ -392,8 +414,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 // ── WebSockets ────────────────────────────────────────────────────────────
-// Large enough for a resized image from a referee (viewers sending anything big are dropped).
-const wssClients = new WebSocketServer({ noServer: true, maxPayload: 2.5 * 1024 * 1024 });
+// Large enough for a rules PDF (3 MB as base64) from a referee (viewers sending anything big are dropped).
+const wssClients = new WebSocketServer({ noServer: true, maxPayload: 4.5 * 1024 * 1024 });
 const wssLed = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
 
 // Referee sockets must come from our own pages (blocks cross-site WebSocket hijacking).

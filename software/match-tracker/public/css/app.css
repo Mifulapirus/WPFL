@@ -40,6 +40,9 @@ button{cursor:pointer;touch-action:manipulation;user-select:none;font-weight:600
 button:hover{background:var(--s3)}
 button:active{transform:scale(.97)}
 button:disabled{opacity:.35;cursor:default;transform:none}
+a.btn{display:inline-flex;align-items:center;font-weight:600;color:var(--fg);background:var(--s2);border:1px solid var(--line);
+  border-radius:10px;padding:8px 12px;min-height:40px;text-decoration:none}
+a.btn:hover{background:var(--s3)}
 .pri{background:var(--acc);border-color:var(--acc);color:#fff}.pri:hover{background:#ff6070}
 .danger{border-color:#5a2a30;color:#ff8a94;background:transparent}.danger:hover{background:#2a1418}
 .sm{min-height:32px;padding:4px 10px;font-size:.85rem}

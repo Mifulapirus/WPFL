@@ -85,6 +85,7 @@ Layering: fill/pixels/normal effects **trim** the touched sections out of all ef
 - `src/tournament.js` and `src/live.js` are pure/unit-tested (`npm test`); keep logic there, not in `server.js`.
 - Strict CSP: no inline `<script>`, `<style>` or `style=""` in `public/` — use classes.
 - LED link: `/led`, Bearer `LED_KEY`; mark ready only after the driver's first message; re-send `live.scene()` on connect.
+- Rules PDF: `src/rules.js`, served at `/rules`; referees upload via the `rules.upload` WS command (not HTTP: nginx caps bodies at 64 KB). wpfl.thehomelab.dev/rules proxies here. `seed/` only seeds a fresh install.
 
 ## NVS keys
 

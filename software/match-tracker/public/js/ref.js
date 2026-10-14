@@ -108,6 +108,7 @@ function onState(m) {
   renderEvents(m.data);
   renderEvent(E);
   renderPast(m.data);
+  renderRules(m.data.rules);
   tick();
 }
 
@@ -734,6 +735,32 @@ $('pastList').onclick = async e => {
   if (!confirm(`Restore "${a.name}" as a draft event?\n\nIts robots, bracket and results come back; the past-event copy stays.`)) return;
   const r = await run('archive.restore', { id });
   if (r) { selectEvent(r.id); toast(`Restored ${a.name} as a draft`); }
+};
+
+// ── Rules PDF (one for the whole site) ──
+const kb = n => `${Math.round(n / 1024)} KB`;
+function renderRules(r) {
+  renderIf('rules', $('rulesInfo'), r, () => {
+    $('rulesInfo').innerHTML = r ? [['File', r.name], ['Size', kb(r.size)], ['Uploaded', new Date(r.at).toLocaleString()]]
+      .map(([k, v]) => `<span>${k}</span><span>${esc(v)}</span>`).join('') : '<span>Status</span><span>No rules PDF yet — upload one</span>';
+    const old = r?.old || [];
+    $('rulesOld').innerHTML = old.length ? `<p class="muted mb">Earlier versions (newest first, last ${old.length} kept):</p>` +
+      old.map(o => `<div class="q"><div>${esc(o.file)} <span class="muted">${kb(o.size)}</span></div>
+        <div class="btns"><a class="btn sm" href="/rules/old/${encodeURIComponent(o.file)}">Download</a></div></div>`).join('') : '';
+  });
+}
+$('rulesUpload').onclick = async () => {
+  const f = $('rulesFile').files[0];
+  if (!f) return toast('Choose the PDF first', true);
+  if (f.size > 3_000_000) return toast('PDF too large (max 3 MB)', true);
+  if (!confirm(`Replace the public rules with "${f.name}"?\n\nwpfl.thehomelab.dev/rules shows it right away.`)) return;
+  const data = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).replace(/^data:[^;,]*;base64,/, 'data:application/pdf;base64,'));
+    fr.onerror = () => reject(new Error('Could not read that file'));
+    fr.readAsDataURL(f);
+  }).catch(e => toast(e.message, true));
+  if (data && await run('rules.upload', { data, name: f.name }, 'Rules updated')) $('rulesFile').value = '';
 };
 
 function renderLed(l) {

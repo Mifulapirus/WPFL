@@ -6,7 +6,8 @@ Live brackets, fight control and arena lights for WPFL events. Runs on **Capek-W
 | Page | Who | What |
 |---|---|---|
 | **`/`** | Everyone | Live fight, up next, results, ranking, Swiss bracket, standings, **robot battlecards** (trading cards that flip over: robot on the front, team and fight log on the back), final podium, past events |
-| **`/ref`** | Referees (password) | Fight console, bracket editor, robots, event settings, arena LED link |
+| **`/ref`** | Referees (password) | Fight console, bracket editor, robots, event settings, rules PDF, arena LED link |
+| **`/rules`** | Everyone | Contest rules PDF (what <https://wpfl.thehomelab.dev/rules> shows) |
 | **`/obs`** | TV / stream crew | Broadcast graphics for OBS: **fight bar** (`/obs/fight`), **bracket** (`/obs/bracket`), **ranking** (`/obs/ranking`) — see below |
 
 Status: **first pass** (v0.1) — Swiss format end to end, live fight control, LED link tested against the real driver.
@@ -70,6 +71,13 @@ tabs edit; the **Fight** tab always runs the live event.
 6. When the last round is decided, viewers get the champion, podium and final ranking automatically.
 7. **Event → End event** saves it to Past events; the public page goes back to the next upcoming event.
 
+**Rules PDF.** **Event → Rules PDF → Upload new rules** replaces the PDF at `/rules` right away, and so at
+<https://wpfl.thehomelab.dev/rules> (that site proxies here). There is one rules file for the whole site, not one per event.
+PDF only (checked by its bytes), max 3 MB. Uploading sends the file over the referee WebSocket, so the 64 KB nginx
+body limit doesn't apply. The replaced file goes to `data/rules/old/` (last 10 kept, downloadable from the same card); to
+put one back, download it and upload it again. `seed/WPFL-rules.pdf` is only the starting copy for a fresh install; uploads
+don't change it.
+
 Mistakes: in **Robots**, a robot's record button (e.g. **2–1**) opens its fight history right under it: **Change…**
 corrects a winner or method in place, **Reset** sends one fight back to pending (fight it again, or record it by hand),
 **Reset this robot’s results** does that for every fight of that robot. **Reset all results** (top of the robot list) does it
@@ -130,6 +138,7 @@ Server-side files:
 | `/srv/apps/wpfl-match-tracker/.env` | `REFEREE_PASSWORD`, `LED_KEY`, `PORT=3110`, `TRUST_PROXY=1` (chmod 600) |
 | `/srv/apps/wpfl-match-tracker/data/events/*.json` | One file per event (draft/published/live) (+ `.bak`); deleted ones in `events/trash/` |
 | `/srv/apps/wpfl-match-tracker/data/archive/*.json` | Past events, one file each (`<date>-<time>-<name>.json`) |
+| `/srv/apps/wpfl-match-tracker/data/rules/` | Rules PDF: `current.pdf` + `current.json` (name, size, sha256, time); replaced ones in `old/` |
 | `/srv/apps/wpfl-match-tracker/data/media/` | Uploaded banners and robot photos (served at `/media/<random>.webp`) |
 | `pm2 logs wpfl-match-tracker` | Logs (logins, LED link connects/drops) |
 | `/etc/nginx/sites-available/wpfl-asmbly.thehomelab.dev.conf` | From `deploy/nginx-wpfl-asmbly.conf`, TLS added by certbot |

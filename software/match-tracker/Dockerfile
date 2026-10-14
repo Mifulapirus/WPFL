@@ -6,6 +6,7 @@ RUN npm ci --omit=dev
 COPY server.js ./
 COPY src ./src
 COPY public ./public
+COPY seed ./seed
 ENV HOST=0.0.0.0 PORT=3110 DATA_DIR=/data TRUST_PROXY=1
 VOLUME /data
 EXPOSE 3110

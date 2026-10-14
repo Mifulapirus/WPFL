@@ -1,6 +1,7 @@
 # Event rules — summary for builders of arena systems
 
-**Official rules:** [wpfl.thehomelab.dev](https://wpfl.thehomelab.dev/) — *WPFL @ ASMBLY Rules, Rev 3, Oct 13 2026*
+**Official rules:** [wpfl.thehomelab.dev/rules](https://wpfl.thehomelab.dev/rules) — *WPFL @ ASMBLY Rules, Rev 4, Oct 13 2026*
+(the PDF is served by the match tracker; referees replace it from **/ref → Event → Rules PDF**)
 (contact: WeaponizedPlastic@asmbly.org). This page only extracts what matters for the arena, its lights and the
 match tracker. **If anything here disagrees with the official document, the official document wins.**
 
@@ -22,7 +23,8 @@ match tracker. **If anything here disagrees with the official document, the offi
 
 ## Robots (rules §C, abbreviated)
 
-1 kg max, must fit a 30 × 30 × 30 cm box, 3D-printed/plastic weapons and bodies, no metal cutting/impact edges,
+1 kg max, must fit a 30 × 30 × 30 cm box, 3D-printed/plastic weapons and bodies, no metal cutting/impact edges
+(metal fasteners may not be used as an edge, armor or shield),
 battery ≤ 50 V, physical weapon lock, fail-safe on signal loss, easily accessed power switch. Non-plastic armor (cardboard,
 foam, balsa…) max 12 mm thick. One exact-replica backup robot allowed; spare parts unlimited. Pre-fight safety
 inspection may be enforced.
@@ -38,8 +40,8 @@ inspection may be enforced.
 | Pin/hold max **10 seconds** | Tracker can run a 10 s countdown on the pinning robot's side group |
 | Both stuck → judge may pause and unstick | **PAUSE** (yellow) |
 | Full match → judges decide | Tracker; *Wins* button |
-| ≥ 10 min between a competitor's matches; ≤ 2 matches per 30 min | Tracker scheduling |
-| ~5 min arena transition between matches | Idle scene (rainbow) between matches |
+| ≥ 10 min between a competitor's matches | Tracker scheduling (min rest warning) |
+| ~3 min arena transition between matches | Idle scene (rainbow) between matches |
 
 ## Conduct (§F)
 
